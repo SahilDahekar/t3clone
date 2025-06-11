@@ -151,13 +151,13 @@ interface ThreadListProps {
 const ThreadList = memo(function ThreadList({ threads, selectedThread, setSelectedThread }: ThreadListProps) {
   return (
     <SidebarGroup>
-      <SidebarGroupLabel className="text-gray-400 text-sm font-medium mb-2">Today</SidebarGroupLabel>
+      <SidebarGroupLabel className="text-muted-foreground text-sm font-medium mb-2">Today</SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
           {threads.map((thread) => (
             <SidebarMenuItem key={thread.id}>
               <SidebarMenuButton
-                className={`hover:bg-gray-800 hover:text-white text-gray-500 ${selectedThread === thread.id ? "bg-gray-800 text-white" : ""}`}
+                className={`hover:bg-accent hover:text-accent-foreground text-muted-foreground ${selectedThread === thread.id ? "bg-accent text-accent-foreground" : ""}`}
                 onClick={() => setSelectedThread(thread.id)}
                 isActive={selectedThread === thread.id}
               >
@@ -264,9 +264,9 @@ export default function LaunchChat() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen bg-background text-foreground">
       <SidebarProvider defaultOpen={true}>
-        <Sidebar collapsible="offcanvas" className="border-r border-gray-800">
+        <Sidebar collapsible="offcanvas" className="border-r border-border">
           <SidebarHeader className="p-4">
             <div className="flex items-center gap-2 mb-4">
               <div className="font-bold text-lg">T3.chat</div>
@@ -280,16 +280,16 @@ export default function LaunchChat() {
               </div>
             </div>
 
-            <Button className="w-full bg-purple-700 hover:bg-purple-600 text-white mb-4" onClick={handleNewChat}>
+            <Button className="w-full" onClick={handleNewChat}>
               <Plus className="h-4 w-4 mr-2" />
               New Chat
             </Button>
 
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <SidebarInput
                 placeholder="Search your threads..."
-                className="pl-10 bg-gray-800 border-gray-700 text-white placeholder:text-gray-400"
+                className="pl-10 bg-background border-input text-foreground placeholder:text-muted-foreground"
               />
             </div>
           </SidebarHeader>
@@ -298,28 +298,27 @@ export default function LaunchChat() {
             <ThreadList threads={threads} selectedThread={selectedThread} setSelectedThread={setSelectedThread} />
           </SidebarContent>
 
-          <SidebarFooter className="p-4 border-t border-gray-800">
+          <SidebarFooter className="p-4 border-t border-border">
             <div className="flex items-center gap-3">
               <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-purple-600 text-white text-sm">SD</AvatarFallback>
+                <AvatarFallback className="bg-primary text-primary-foreground text-sm">SD</AvatarFallback>
               </Avatar>
               <div className="flex-1">
                 <div className="text-sm font-medium">Sahil Dahekar</div>
-                <div className="text-xs text-gray-500">Free</div>
+                <div className="text-xs text-muted-foreground">Free</div>
               </div>
             </div>
           </SidebarFooter>
         </Sidebar>
 
         <SidebarInset className="flex flex-col">
-          <header className="flex h-16 items-center gap-2 px-4 border-b border-gray-800">
-            <SidebarTrigger className="hover:bg-gray-800 text-gray-500" />
+          <header className="flex h-16 items-center gap-2 px-4 border-b border-border">
+            <SidebarTrigger className="hover:bg-accent text-muted-foreground" />
             {currentThread && <div className="text-lg font-medium">{currentThread.title}</div>}
           </header>
 
           <main className="flex-1 flex flex-col">
             {!selectedThread ? (
-              // Welcome screen when no thread is selected
               <div className="flex-1 flex flex-col items-center justify-center p-8">
                 <h1 className="text-3xl font-semibold mb-8 text-center">How can I help you, Sahil?</h1>
 
@@ -328,7 +327,7 @@ export default function LaunchChat() {
                     <Button
                       key={action.label}
                       variant="outline"
-                      className="h-auto p-4 flex flex-col items-center gap-2 bg-gray-800 border-gray-700 hover:bg-gray-700 text-white"
+                      className="h-auto p-4 flex flex-col items-center gap-2"
                     >
                       <action.icon className="h-5 w-5" />
                       <span className="text-sm font-medium">{action.label}</span>
@@ -341,7 +340,7 @@ export default function LaunchChat() {
                     <Button
                       key={index}
                       variant="ghost"
-                      className="w-full text-left justify-start text-gray-300 hover:bg-gray-800 hover:text-white p-3 h-auto"
+                      className="w-full text-left justify-start text-muted-foreground hover:text-accent-foreground p-3 h-auto"
                       onClick={() => setMessage(question)}
                     >
                       {question}
@@ -350,31 +349,30 @@ export default function LaunchChat() {
                 </div>
               </div>
             ) : (
-              // Chat messages when a thread is selected
               <div className="flex-1 overflow-y-auto p-4">
                 <div className="max-w-4xl mx-auto space-y-6">
                   {currentThread?.messages.map((msg) => (
                     <div key={msg.id} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
                       <div
                         className={`max-w-[80%] rounded-lg p-4 ${
-                          msg.sender === "user" ? "bg-purple-600 text-white" : "bg-gray-800 text-white"
+                          msg.sender === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
                         }`}
                       >
                         {msg.isCode ? (
                           <div className="relative">
-                            <div className="flex items-center justify-between bg-gray-900 px-4 py-2 rounded-t-lg">
-                              <span className="text-xs text-gray-400">julia</span>
+                            <div className="flex items-center justify-between bg-background px-4 py-2 rounded-t-lg">
+                              <span className="text-xs text-muted-foreground">julia</span>
                               <div className="flex gap-2">
-                                <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-white">
+                                <Button variant="ghost" size="icon" className="h-6 w-6">
                                   <Copy className="h-3 w-3" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-white">
+                                <Button variant="ghost" size="icon" className="h-6 w-6">
                                   <Download className="h-3 w-3" />
                                 </Button>
                               </div>
                             </div>
-                            <pre className="bg-gray-900 p-4 rounded-b-lg overflow-x-auto">
-                              <code className="text-sm text-white">{msg.content}</code>
+                            <pre className="bg-background p-4 rounded-b-lg overflow-x-auto">
+                              <code className="text-sm text-foreground">{msg.content}</code>
                             </pre>
                           </div>
                         ) : (
@@ -387,42 +385,16 @@ export default function LaunchChat() {
                   <div ref={messagesEndRef} />
                 </div>
               </div>
-            )}
-
-            <div className="p-4 border-t border-gray-800">
+            )}            <div className="p-4 border-t border-border">
               <div className="max-w-4xl mx-auto">
                 <ChatInput
                   message={message}
                   setMessage={setMessage}
                   onSend={handleSendMessage}
+                  selectedModel={selectedModel}
+                  models={models}
+                  onModelSelect={setSelectedModel}
                 />
-                <div className="flex items-center justify-between mt-3 text-sm text-gray-400">
-                  <div className="flex items-center gap-4">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger className="text-gray-500" asChild>
-                        <Button variant="ghost" className="text-gray-400 hover:text-white p-0 h-auto">
-                          {selectedModel}
-                          <ChevronDown className="h-4 w-4 ml-1" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="bg-gray-800 border-gray-700">
-                        {models.map((model) => (
-                          <DropdownMenuItem
-                            key={model}
-                            onClick={() => setSelectedModel(model)}
-                            className="text-white hover:bg-gray-700"
-                          >
-                            {model}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-white">
-                      <Search className="h-4 w-4 text-gray-500" />
-                    </Button>
-                  </div>
-                </div>
               </div>
             </div>
           </main>

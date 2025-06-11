@@ -1,15 +1,25 @@
-import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Paperclip, Send } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Paperclip, Send, ChevronDown, Search } from "lucide-react"
 import React, { useCallback } from "react"
 
 interface ChatInputProps {
   message: string
   setMessage: (msg: string) => void
   onSend: () => void
+  selectedModel: string
+  models: string[]
+  onModelSelect: (model: string) => void
 }
 
-const ChatInput: React.FC<ChatInputProps> = React.memo(({ message, setMessage, onSend }) => {
+const ChatInput: React.FC<ChatInputProps> = React.memo(({ 
+  message, 
+  setMessage, 
+  onSend,
+  selectedModel,
+  models,
+  onModelSelect 
+}) => {
   const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
@@ -18,26 +28,52 @@ const ChatInput: React.FC<ChatInputProps> = React.memo(({ message, setMessage, o
   }, [onSend])
 
   return (
-    <div className="relative">
-      <Input
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        onKeyDown={handleKeyPress}
-        placeholder="Type your message here..."
-        className="pr-24 pl-4 py-3 bg-gray-800 border-gray-700 text-white placeholder:text-gray-400 rounded-lg"
-      />
-      <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-white">
-          <Paperclip className="h-4 w-4" />
+    <div className="relative flex flex-col gap-2">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground px-4">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 px-2 gap-1.5">
+              {selectedModel}
+              <ChevronDown className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            {models.map((model) => (
+              <DropdownMenuItem
+                key={model}
+                onClick={() => onModelSelect(model)}
+              >
+                {model}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Button variant="ghost" size="icon" className="h-8 w-8">
+          <Search className="h-4 w-4" />
         </Button>
-        <Button
-          size="icon"
-          className="h-8 w-8 bg-purple-600 hover:bg-purple-700"
-          disabled={!message.trim()}
-          onClick={onSend}
-        >
-          <Send className="h-4 w-4" />
-        </Button>
+      </div>
+      <div className="relative">
+        <textarea
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          onKeyDown={handleKeyPress}
+          placeholder="Type your message here..."
+          className="w-full min-h-[80px] px-4 py-3 bg-background border border-input rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground"
+        />
+        <div className="absolute right-2 bottom-2 flex items-center gap-2">
+          <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Paperclip className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="default"
+            size="icon"
+            className="h-8 w-8"
+            disabled={!message.trim()}
+            onClick={onSend}
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </div>
   )
