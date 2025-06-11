@@ -183,9 +183,9 @@ export default function LaunchChat() {
   const currentThread = threads.find((thread) => thread.id === selectedThread)
 
   // Function to handle sending a new message
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!message.trim()) return
-
+    setMessage("");
     if (selectedThread) {
       // Add message to existing thread
       setThreads((prevThreads) =>
@@ -208,6 +208,7 @@ export default function LaunchChat() {
       )
     } else {
       // Create a new thread
+      
       const newThread = {
         id: Math.max(...threads.map((t) => t.id)) + 1,
         title: message.length > 25 ? message.substring(0, 25) + "..." : message,
@@ -226,30 +227,98 @@ export default function LaunchChat() {
       setSelectedThread(newThread.id)
     }
 
-    // Clear the input
-    setMessage("")
+    try {
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ 
+        messages: message , 
+        selectedModel,
+      })
+    });
 
-    // Simulate assistant response after a delay
-    setTimeout(() => {
-      setThreads((prevThreads) =>
-        prevThreads.map((thread) =>
-          thread.id === (selectedThread || Math.max(...prevThreads.map((t) => t.id)))
-            ? {
-                ...thread,
-                messages: [
-                  ...thread.messages,
-                  {
-                    id: Math.max(...thread.messages.map((m) => m.id)) + 1,
-                    sender: "assistant",
-                    content: "I'm an AI assistant. How can I help you with that?",
-                    timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-                  },
-                ],
-              }
-            : thread,
-        ),
+    if (!response.body) throw new Error('No response body');
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+
+    // Create assistant message placeholder
+    const assistantMessageId = Date.now() + 1;
+    const assistantMessage = {
+      id: assistantMessageId,
+      sender: "assistant",
+      content: "",
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    };
+
+    // Add empty assistant message
+    setThreads((prevThreads) =>
+      prevThreads.map((thread) =>
+        thread.id === selectedThread
+          ? { ...thread, messages: [...thread.messages, assistantMessage] }
+          : thread
       )
-    }, 1000)
+    );
+
+    // Stream the response
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value);
+      const lines = chunk.split('\n');
+
+      for (const line of lines) {
+        if (line.startsWith('0:')) {
+          const content = line.slice(2);
+          
+          // Update the assistant message with streaming content
+          setThreads((prevThreads) =>
+            prevThreads.map((thread) =>
+              thread.id === selectedThread
+                ? {
+                    ...thread,
+                    messages: thread.messages.map((msg) =>
+                      msg.id === assistantMessageId
+                        ? { ...msg, content: msg.content + content }
+                        : msg
+                    ),
+                  }
+                : thread
+            )
+          );
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Streaming error:', error);
+    // Handle error - maybe add error message to chat
+  }
+
+
+    // // Simulate assistant response after a delay
+    // setTimeout(() => {
+    //   setThreads((prevThreads) =>
+    //     prevThreads.map((thread) =>
+    //       thread.id === (selectedThread || Math.max(...prevThreads.map((t) => t.id)))
+    //         ? {
+    //             ...thread,
+    //             messages: [
+    //               ...thread.messages,
+    //               {
+    //                 id: Math.max(...thread.messages.map((m) => m.id)) + 1,
+    //                 sender: "assistant",
+    //                 content: data.response || "This is a simulated response from the assistant.",
+    //                 timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    //               },
+    //             ],
+    //           }
+    //         : thread,
+    //     ),
+    //   )
+    // }, 1000)
   }
 
   // Scroll to bottom when messages change
