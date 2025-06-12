@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { ConvexClientProvider } from "./ConvexClientProvider";
 
 export const metadata: Metadata = {
   title: "T3 Clone",
@@ -22,8 +23,10 @@ export default function RootLayout({
       </head>
       <body
         className="antialiased"
-      >
-        {children}
+      >        
+        <ConvexClientProvider>
+          {children}
+        </ConvexClientProvider>
       </body>
     </html>
   );

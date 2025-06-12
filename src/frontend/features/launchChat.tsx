@@ -34,8 +34,13 @@ import {
 } from "@/components/ui/sidebar"
 import ChatInput from "./ChatInput"
 import React, { useEffect, useRef, useState, useCallback, memo } from "react"
+import { useQuery , useMutation} from "convex/react";
+import { api } from "../../../convex/_generated/api";
 
-// Sample chat threads with messages
+
+import { type Id } from "../../../convex/_generated/dataModel"; 
+
+
 const chatThreads = [
   {
     id: 1,
@@ -149,6 +154,7 @@ interface ThreadListProps {
 }
 
 const ThreadList = memo(function ThreadList({ threads, selectedThread, setSelectedThread }: ThreadListProps) {
+  
   return (
     <SidebarGroup>
       <SidebarGroupLabel className="text-muted-foreground text-sm font-medium mb-2">Today</SidebarGroupLabel>
@@ -179,13 +185,18 @@ export default function LaunchChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const models = ["Gemini 2.5 Flash", "GPT-4", "Claude 3.5 Sonnet", "Llama 3.1"]
 
-  // Find the selected thread
+  
   const currentThread = threads.find((thread) => thread.id === selectedThread)
-
+  const convex_message = useQuery(api.message.getMessages, { threadId: "jn72zkaz8ggtwj3aj35pzjg6jx7hq7g0" as Id<"threads">});
+  console.dir(convex_message);
+  const sendMessage = useMutation(api.message.addMessage);
+  
   // Function to handle sending a new message
   const handleSendMessage = async () => {
     if (!message.trim()) return
     setMessage("");
+
+    
     if (selectedThread) {
       // Add message to existing thread
       setThreads((prevThreads) =>
@@ -261,7 +272,7 @@ export default function LaunchChat() {
           : thread
       )
     );
-
+    
     // Stream the response
     while (true) {
       const { done, value } = await reader.read();

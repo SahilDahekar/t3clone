@@ -1,8 +1,10 @@
 import { google } from '@ai-sdk/google';
 import { streamText , type LanguageModel } from "ai";
 
+
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
+
 
 const getModel = (selectedModel: string): LanguageModel => {
   // switch (selectedModel) {
@@ -28,7 +30,7 @@ export async function POST(req: Request) {
 //   for await (const textPart of textStream) {
 //       console.log(textPart);
 // }
+return result.toDataStreamResponse();
 
-  return result.toDataStreamResponse();
 }
 

@@ -1,0 +1,6 @@
+{ "threadId": "thread1", "sender": "user", "body": "What's the best way to learn TypeScript?", "createdAt": 1718186400000 }
+{ "threadId": "thread1", "sender": "ai", "body": "Start with the official docs, then build a small project.", "createdAt": 1718186403000 }
+{ "threadId": "thread1", "sender": "user", "body": "Can I use it with React?", "createdAt": 1718186410000 }
+{ "threadId": "thread1", "sender": "ai", "body": "Absolutely! TypeScript works great with React via types like JSX.", "createdAt": 1718186415000 }
+{ "threadId": "thread2", "sender": "user", "body": "Branching from earlier idea — how about Next.js + TS?", "createdAt": 1718186420000 }
+{ "threadId": "thread2", "sender": "ai", "body": "Yes, that’s a common and powerful stack. Use create-next-app with `--ts`.", "createdAt": 1718186425000 }
