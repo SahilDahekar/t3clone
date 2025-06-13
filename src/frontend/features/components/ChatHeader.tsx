@@ -1,7 +1,8 @@
 import { memo } from "react"
 import { Button } from "@/components/ui/button"
-import { Share, Sun, Plus, Search } from "lucide-react"
+import { Share, Plus, Search } from "lucide-react"
 import { SidebarHeader, SidebarInput } from "@/components/ui/sidebar"
+import ThemeToggle from "./ThemeToggle"
 
 interface ChatHeaderProps {
   onNewChat: () => void
@@ -15,10 +16,7 @@ const ChatHeader = memo(function ChatHeader({ onNewChat }: ChatHeaderProps) {
         <div className="ml-auto flex gap-2">
           <Button variant="ghost" size="icon" className="h-8 w-8">
             <Share className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <Sun className="h-4 w-4" />
-          </Button>
+          </Button>          <ThemeToggle />
         </div>
       </div>
 
