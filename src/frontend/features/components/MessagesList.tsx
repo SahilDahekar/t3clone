@@ -3,7 +3,7 @@ import Message from "./Message"
 
 interface MessagesListProps {
   messages: Array<{
-    id: number
+    id: string
     sender: string
     content: string
     timestamp: string

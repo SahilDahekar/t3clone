@@ -3,12 +3,14 @@ import { Copy, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import ReactMarkdown from "react-markdown"
 import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter"
-import { oneDark } from "react-syntax-highlighter/dist/cjs/styles/prism"
+import { oneDark as darktheme } from "react-syntax-highlighter/dist/cjs/styles/prism"
+import { oneLight as lighttheme } from "react-syntax-highlighter/dist/esm/styles/prism"
+import { useTheme } from "next-themes"
 import type { Components } from "react-markdown"
 
 interface MessageProps {
   message: {
-    id: number
+    id: string
     sender: string
     content: string
     timestamp: string
@@ -18,6 +20,7 @@ interface MessageProps {
 
 const Message = memo(function Message({ message: msg }: MessageProps) {
   const [copied, setCopied] = useState(false)
+  const { theme } = useTheme()
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text)
@@ -59,7 +62,7 @@ const Message = memo(function Message({ message: msg }: MessageProps) {
           </div>
           <SyntaxHighlighter
             language={match?.[1] || "text"}
-            style={oneDark}
+            style={theme === "dark" ? darktheme : lighttheme}
             customStyle={{
               marginBottom: "0.75rem",
               marginTop: 0,
@@ -150,7 +153,7 @@ const Message = memo(function Message({ message: msg }: MessageProps) {
             </div>
             <SyntaxHighlighter
               language="typescript"
-              style={oneDark}
+              style={theme === "dark" ? darktheme : lighttheme}
               customStyle={{
                 margin: 0,
                 borderTopLeftRadius: 0,

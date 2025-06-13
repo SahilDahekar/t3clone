@@ -7,32 +7,29 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
-import ChatInput from "./ChatInput"
-import React, { useEffect, useRef, useState, useCallback, memo } from "react"
-import { useQuery, useMutation } from "convex/react"
-import { api } from "../../../convex/_generated/api"
-import { type Id } from "../../../convex/_generated/dataModel"
+import ChatInput from "./components/ChatInput"
+import React, { useCallback, useState, memo } from "react"
+import { useNavigate } from "react-router"
 
 // Import split components
 import QuickActions from "./components/QuickActions"
 import SampleQuestions from "./components/SampleQuestions"
 import ChatHeader from "./components/ChatHeader"
-import MessagesList from "./components/MessagesList"
 import ThreadList from "./components/ThreadList"
 
-interface Message {
-  id: number
+export interface Thread {
+  id: string
+  title: string
+  date: string
+  messages: Message[]
+}
+
+export interface Message {
+  id: string
   sender: string
   content: string
   timestamp: string
   isCode?: boolean
-}
-
-interface Thread {
-  id: number
-  title: string
-  date: string
-  messages: Message[]
 }
 
 const sampleQuestions = [
@@ -46,266 +43,77 @@ const models = ["Gemini 2.5 Flash", "GPT-4", "Claude 3.5 Sonnet", "Llama 3.1"]
 
 const initialThreads: Thread[] = [
   {
-    id: 1,
-    title: "Using V0 for quick UI develo...",
+    id: "d96a40f1-1f5a-4abd-9f05-d9c24bcc04a0",
+    title: "What is T3 Stack?",
     date: "Today",
     messages: [
       {
-        id: 1,
+        id: "61734ff1-ccb0-46ab-b5af-5cfff35230a1",
         sender: "user",
-        content: "How can I use V0 for quick UI development?",
+        content: "Can you explain what T3 Stack is?",
         timestamp: "10:30 AM",
       },
       {
-        id: 2,
+        id: "274dd225-1608-457a-8c2c-0d7809176089",
         sender: "assistant",
-        content: "V0 is a great tool for rapid UI prototyping. You can start by describing what you want to build, and V0 will generate the code for you. Would you like me to show you an example?",
+        content: "T3 Stack is a modern web development stack that combines TypeScript, tRPC, and Tailwind CSS. It's designed for building typesafe full-stack applications with excellent developer experience.",
         timestamp: "10:31 AM",
       },
     ],
   },
+  {
+    id: "f5d2d446-312d-46c3-a6e7-b4fe67ef7667",
+    title: "T3 Stack Components",
+    date: "Today",
+    messages: [
+      {
+        id: "7500999b-c6c4-463d-b4dc-0c61a1973ace",
+        sender: "user",
+        content: "What are the main components of T3 Stack?",
+        timestamp: "11:15 AM",
+      },
+      {
+        id: "f28ce559-ff28-47c4-8cfd-b4c950c526a6",
+        sender: "assistant",
+        content: "The main components are:\n- TypeScript for type safety\n- tRPC for end-to-end typesafe APIs\n- Tailwind CSS for styling\n- Next.js for the framework\n- Prisma for database management\n- NextAuth.js for authentication",
+        timestamp: "11:16 AM",
+      },
+    ],
+  }
 ]
 
 const LaunchChat = () => {
   const [message, setMessage] = useState("")
   const [selectedModel, setSelectedModel] = useState("Gemini 2.5 Flash")
-  const [selectedThread, setSelectedThread] = useState<number | null>(null)
-  const [threads, setThreads] = useState<Thread[]>(initialThreads)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-
-  const currentThread = threads.find((thread: Thread) => thread.id === selectedThread)
-  // const convex_message = useQuery(api.message.getMessages, { threadId: "jd7e1waat33cb2s9d3yjcf1qqd7hrbyz" as Id<"threads"> })
-  // console.dir(convex_message);
-  // const sendMessage = useMutation(api.message.addMessage)
+  const navigate = useNavigate()
 
   const handleSendMessage = useCallback(async () => {
     if (!message.trim()) return
-    setMessage("")
 
-    if (selectedThread) {
-      setThreads((prevThreads: Thread[]) =>
-        prevThreads.map((thread: Thread) =>
-          thread.id === selectedThread
-            ? {
-              ...thread,
-              messages: [
-                ...thread.messages,
-                {
-                  id: Math.max(...thread.messages.map((m: Message) => m.id)) + 1,
-                  sender: "user",
-                  content: message,
-                  timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-                },
-              ],
-            }
-            : thread
-        )
-      )
-    } else {
-      const newThread: Thread = {
-        id: Math.max(...threads.map((t: Thread) => t.id)) + 1,
-        title: message.length > 25 ? message.substring(0, 25) + "..." : message,
-        date: "Today",
-        messages: [
-          {
-            id: 1,
-            sender: "user",
-            content: message,
-            timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          },
-        ],
-      }
-
-      setThreads((prev: Thread[]) => [...prev, newThread])
-      setSelectedThread(newThread.id)
-    }
-
-    try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messages: message,
-          selectedModel,
-        })
-      })
-
-      if (!response.body) throw new Error('No response body')
-      await handleStreamingResponse(response, selectedThread)
-    } catch (error) {
-      console.error('Streaming error:', error)
-    }
-  }, [message, selectedThread, selectedModel, threads])
-
-// Updated streaming response handler - replace the existing handleStreamingResponse function
-const handleStreamingResponse = useCallback(async (response: Response, threadId: number | null) => {
-  const reader = response.body!.getReader()
-  const decoder = new TextDecoder()
-  const assistantMessageId = Date.now() + 1
-  
-  const assistantMessage: Message = {
-    id: assistantMessageId,
-    sender: "assistant",
-    content: "",
-    timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-  }
-
-  // Add the initial empty message
-  setThreads((prevThreads: Thread[]) =>
-    prevThreads.map((thread: Thread) =>
-      thread.id === threadId
-        ? { ...thread, messages: [...thread.messages, assistantMessage] }
-        : thread
-    )
-  )
-
-  let buffer = ""
-  
-  try {
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      const chunk = decoder.decode(value, { stream: true })
-      buffer += chunk
-      
-      // Process complete lines
-      const lines = buffer.split('\n')
-      // Keep the last incomplete line in buffer
-      buffer = lines.pop() || ""
-      
-      for (const line of lines) {
-        if (line.trim()) {
-          let content = ""
-          
-          // Handle the specific format: 0:"content"
-          if (line.startsWith('0:')) {
-            const quotedContent = line.slice(2) // Remove "0:"
-            
-            // Parse the quoted JSON string
-            try {
-              content = JSON.parse(quotedContent) // This will properly unescape the JSON string
-              console.log('Parsed content:', content)
-            } catch (e) {
-              // If JSON parsing fails, try to manually clean
-              content = quotedContent
-                .replace(/^"/, '') // Remove leading quote
-                .replace(/"$/, '') // Remove trailing quote
-                .replace(/\\"/g, '"') // Unescape quotes
-                .replace(/\\n/g, '\n') // Convert \n to actual newlines
-                .replace(/\\t/g, '\t') // Convert \t to actual tabs
-                .replace(/\\\\/g, '\\') // Unescape backslashes
-              console.log('Manually cleaned content:', content)
-            }
-          }
-          // Handle metadata lines (ignore them)
-          else if (line.startsWith('f:') || line.startsWith('e:') || line.startsWith('d:')) {
-            console.log('Metadata line:', line)
-            continue
-          }
-
-          if (content) {
-            setThreads((prevThreads: Thread[]) =>
-              prevThreads.map((thread: Thread) =>
-                thread.id === threadId
-                  ? {
-                      ...thread,
-                      messages: thread.messages.map((msg: Message) =>
-                        msg.id === assistantMessageId
-                          ? { ...msg, content: msg.content + content }
-                          : msg
-                      ),
-                    }
-                  : thread
-              )
-            )
-          }
-        }
-      }
-    }
-    
-    // Process any remaining content in buffer
-    if (buffer.trim() && buffer.startsWith('0:')) {
-      const quotedContent = buffer.slice(2)
-      let content = ""
-      
-      try {
-        content = JSON.parse(quotedContent)
-      } catch (e) {
-        content = quotedContent
-          .replace(/^"/, '')
-          .replace(/"$/, '')
-          .replace(/\\"/g, '"')
-          .replace(/\\n/g, '\n')
-          .replace(/\\t/g, '\t')
-          .replace(/\\\\/g, '\\')
-      }
-      
-      if (content) {
-        setThreads((prevThreads: Thread[]) =>
-          prevThreads.map((thread: Thread) =>
-            thread.id === threadId
-              ? {
-                  ...thread,
-                  messages: thread.messages.map((msg: Message) =>
-                    msg.id === assistantMessageId
-                      ? { ...msg, content: msg.content + content }
-                      : msg
-                  ),
-                }
-              : thread
-          )
-        )
-      }
-    }
-  } catch (error) {
-    console.error('Streaming error:', error)
-    // Add error message to the thread
-    setThreads((prevThreads: Thread[]) =>
-      prevThreads.map((thread: Thread) =>
-        thread.id === threadId
-          ? {
-              ...thread,
-              messages: thread.messages.map((msg: Message) =>
-                msg.id === assistantMessageId
-                  ? { ...msg, content: msg.content + "\n\n*Error: Failed to load response*" }
-                  : msg
-              ),
-            }
-          : thread
-      )
-    )
-  } finally {
-    reader.releaseLock()
-  }
-}, [])
-
-  const handleNewChat = useCallback(() => {
-    setSelectedThread(null)
-    setMessage("")
-  }, [])
+    // Create a new thread and navigate to it
+    const newThreadId = Math.floor(Math.random() * 1000000)
+    navigate(`/chat/${newThreadId}`)
+  }, [message, navigate])
 
   const handleQuestionSelect = useCallback((question: string) => {
     setMessage(question)
   }, [])
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [threads, selectedThread])
+  const handleSelectThread = useCallback((threadId: string) => {
+    navigate(`/chat/${threadId}`)
+  }, [navigate])
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <SidebarProvider defaultOpen={true}>
         <Sidebar collapsible="offcanvas" className="border-r border-border">
-          <ChatHeader onNewChat={handleNewChat} />
+          <ChatHeader onNewChat={() => setMessage("")} />
 
           <SidebarContent className="px-4">
             <ThreadList
-              threads={threads}
-              selectedThread={selectedThread}
-              setSelectedThread={setSelectedThread}
+              threads={initialThreads}
+              selectedThread={null}
+              setSelectedThread={handleSelectThread}
             />
           </SidebarContent>
 
@@ -325,27 +133,19 @@ const handleStreamingResponse = useCallback(async (response: Response, threadId:
         <SidebarInset className="flex flex-col h-screen">
           <header className="flex h-16 items-center gap-2 px-4 border-b border-border sticky top-0 bg-background z-10">
             <SidebarTrigger className="hover:bg-accent text-muted-foreground" />
-            {currentThread && <div className="text-lg font-medium">{currentThread.title}</div>}
           </header>
 
           <main className="flex-1 flex flex-col overflow-hidden">
-            {!selectedThread ? (
-              <div className="flex-1 overflow-y-auto p-8">
-                <div className="flex flex-col items-center justify-center min-h-full">
-                  <h1 className="text-3xl font-semibold mb-8 text-center">How can I help you, Sahil?</h1>
-                  <QuickActions />
-                  <SampleQuestions
-                    questions={sampleQuestions}
-                    onQuestionSelect={handleQuestionSelect}
-                  />
-                </div>
+            <div className="flex-1 overflow-y-auto p-8">
+              <div className="flex flex-col items-center justify-center min-h-full">
+                <h1 className="text-3xl font-semibold mb-8 text-center">How can I help you, Sahil?</h1>
+                <QuickActions />
+                <SampleQuestions
+                  questions={sampleQuestions}
+                  onQuestionSelect={handleQuestionSelect}
+                />
               </div>
-            ) : currentThread && (
-              <MessagesList
-                messages={currentThread.messages}
-                messagesEndRef={messagesEndRef}
-              />
-            )}
+            </div>
 
             <div className="p-4 border-t border-border bg-background sticky bottom-0">
               <div className="max-w-4xl mx-auto">

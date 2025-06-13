@@ -8,23 +8,12 @@ import {
   SidebarMenuButton,
 } from "@/components/ui/sidebar"
 
-interface Thread {
-  id: number
-  title: string
-  date: string
-  messages: Array<{
-    id: number
-    sender: string
-    content: string
-    timestamp: string
-    isCode?: boolean
-  }>
-}
+import { Thread } from "../launchChat" // Adjust the import path as necessary
 
 interface ThreadListProps {
   threads: Thread[]
-  selectedThread: number | null
-  setSelectedThread: (threadId: number) => void
+  selectedThread: string | null
+  setSelectedThread: (threadId: string) => void
 }
 
 const ThreadList = memo(function ThreadList({ 
