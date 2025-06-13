@@ -162,14 +162,21 @@ const LaunchChat = () => {
   const handleQuestionSelect = useCallback((question: string) => {
     setMessage(question)
   }, [])
-
   const handleStreamChunk = useCallback((chunk: string, threadId: number | null, messageId: number) => {
     if (!chunk) return;
     
     const lines = chunk.split('\n');
     for (const line of lines) {
       if (line.startsWith('0:')) {
-        const content = line.slice(2);
+        // Extract content and remove surrounding quotes if they exist
+        let content = line.slice(2);
+        if (content.startsWith('"') && content.endsWith('"')) {
+          content = content.slice(1, -1);
+        }
+        
+        // Replace escaped newlines with actual newlines
+        content = content.replace(/\\n/g, '\n');
+        
         setThreads((prevThreads: Thread[]) =>
           prevThreads.map((thread: Thread) =>
             thread.id === threadId
