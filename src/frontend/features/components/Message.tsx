@@ -61,7 +61,8 @@ const Message = memo(function Message({ message: msg }: MessageProps) {
             language={match?.[1] || "text"}
             style={oneDark}
             customStyle={{
-              margin: 0,
+              marginBottom: "0.75rem",
+              marginTop: 0,
               borderTopLeftRadius: 0,
               borderTopRightRadius: 0,
               borderBottomLeftRadius: "0.5rem",
