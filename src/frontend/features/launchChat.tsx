@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   Sidebar,
@@ -120,73 +121,38 @@ const LaunchChat = () => {
       setSelectedThread(newThread.id)
     }
 
-    try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messages: message,
-          selectedModel,
-        })
-      })
+    try {      
+      const assistantMessageId = Date.now() + 1
+      const assistantMessage: Message = {
+        id: assistantMessageId,
+        sender: "assistant",
+        content: "",
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      }
 
-      if (!response.body) throw new Error('No response body')
-      await handleStreamingResponse(response, selectedThread)
+      setThreads((prevThreads: Thread[]) =>
+        prevThreads.map((thread: Thread) =>
+          thread.id === selectedThread
+            ? { ...thread, messages: [...thread.messages, assistantMessage] }
+            : thread
+        )
+      )
+
+      const response = await axios.post("/api/chat", {
+        messages: message,
+        selectedModel,
+      }, {
+        responseType: 'stream',
+        onDownloadProgress: (progressEvent) => {
+          const chunk = progressEvent.event.target.response;
+          handleStreamChunk(chunk, selectedThread, assistantMessageId);
+        }
+      })
     } catch (error) {
       console.error('Streaming error:', error)
     }
-  }, [message, selectedThread, selectedModel, threads])
-
-  const handleStreamingResponse = useCallback(async (response: Response, threadId: number | null) => {
-    const reader = response.body!.getReader()
-    const decoder = new TextDecoder()
-
-    const assistantMessageId = Date.now() + 1
-    const assistantMessage: Message = {
-      id: assistantMessageId,
-      sender: "assistant",
-      content: "",
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    }
-
-    setThreads((prevThreads: Thread[]) =>
-      prevThreads.map((thread: Thread) =>
-        thread.id === threadId
-          ? { ...thread, messages: [...thread.messages, assistantMessage] }
-          : thread
-      )
-    )
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      const chunk = decoder.decode(value)
-      const lines = chunk.split('\n')
-
-      for (const line of lines) {
-        if (line.startsWith('0:')) {
-          const content = line.slice(2)
-          setThreads((prevThreads: Thread[]) =>
-            prevThreads.map((thread: Thread) =>
-              thread.id === threadId
-                ? {
-                    ...thread,
-                    messages: thread.messages.map((msg: Message) =>
-                      msg.id === assistantMessageId
-                        ? { ...msg, content: msg.content + content }
-                        : msg
-                    ),
-                  }
-                : thread
-            )
-          )
-        }
-      }
-    }
-  }, [])
+  }, [message, selectedThread, selectedModel, threads])  
+  
 
   const handleNewChat = useCallback(() => {
     setSelectedThread(null)
@@ -196,6 +162,31 @@ const LaunchChat = () => {
   const handleQuestionSelect = useCallback((question: string) => {
     setMessage(question)
   }, [])
+
+  const handleStreamChunk = useCallback((chunk: string, threadId: number | null, messageId: number) => {
+    if (!chunk) return;
+    
+    const lines = chunk.split('\n');
+    for (const line of lines) {
+      if (line.startsWith('0:')) {
+        const content = line.slice(2);
+        setThreads((prevThreads: Thread[]) =>
+          prevThreads.map((thread: Thread) =>
+            thread.id === threadId
+              ? {
+                  ...thread,
+                  messages: thread.messages.map((msg) =>
+                    msg.id === messageId
+                      ? { ...msg, content: msg.content + content }
+                      : msg
+                  ),
+                }
+              : thread
+          )
+        );
+      }
+    }
+  }, [setThreads]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
