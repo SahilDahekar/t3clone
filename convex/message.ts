@@ -50,8 +50,7 @@ export const send = mutation({
     await ctx.db.insert("messages", {
       threadId,
       role,
-      content,
-      parentMessageId, 
+      content, 
       createdAt: Date.now(),
     });
 

@@ -10,12 +10,12 @@ export const list = query({
 
 export const create = mutation({
   args: {
-    projectId: v.id("projects"),
+    userId: v.id("users"),
     title: v.string(),
   },
-  handler: async (ctx, { projectId, title }) => {
+  handler: async (ctx, { userId, title }) => {
     const threadId = await ctx.db.insert("threads", {
-      projectId,
+      userId,
       title,
       createdAt: Date.now(),
     });

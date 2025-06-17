@@ -6,20 +6,15 @@ export default defineSchema({
   users: defineTable({
     name: v.string(),
     tokenIdentifier: v.string(),
+    threadIds: v.array(v.id("threads")),
   }).index("by_token", ["tokenIdentifier"]),
 
-  projects: defineTable({
-    name: v.string(),
+  threads: defineTable({
     userId: v.id("users"),
+    title: v.string(),
     createdAt: v.number(),
     mainThreadId: v.optional(v.id("threads")),
   }).index("by_user", ["userId"]),
-
-  threads: defineTable({
-    projectId: v.id("projects"),
-    title: v.string(),
-    createdAt: v.number(),
-  }).index("by_project", ["projectId"]),
 
   messages: defineTable({
   threadId: v.id("threads"),
@@ -36,8 +31,7 @@ export default defineSchema({
     )
   ),
   createdAt: v.number(),
-  parentMessageId: v.optional(v.id("messages")),  
-  parentThreadId: v.optional(v.id("threads")),
+
 }).index("by_thread", ["threadId"]),
 
 });

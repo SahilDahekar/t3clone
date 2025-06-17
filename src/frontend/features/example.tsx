@@ -18,7 +18,7 @@ export default function Example() {
     activeThread ? { threadId: activeThread } : "skip"
   );
 
-  const createProject = useMutation(api.projects.create);
+  
   const createThread = useMutation(api.threads.create);
   const send = useMutation(api.message.send);
 
@@ -29,13 +29,10 @@ export default function Example() {
     if (!projectId) return alert("Enter a project ID first");
 
     
-    const project = await createProject({ name: projectId , id: hardcodedUserId });
-
+    const thread = await createThread({ title: projectId , userId: hardcodedUserId });
     
-    const thread = await createThread({
-      projectId: project,
-      title: defaultChatName,
-    });
+    
+    
 
     setActiveThread(thread);
     setParentMessageId(undefined);
@@ -98,7 +95,7 @@ function postSendCleanup() {
 
         <h2 className="font-bold mb-2">Threads</h2>
         {threads
-          ?.filter((t) => t.projectId === projectId)
+          ?.filter((t) => t.userId === hardcodedUserId)
           .map((t) => (
             <div
               key={t._id}
