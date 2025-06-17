@@ -92,10 +92,11 @@ const LaunchChat = () => {
   const [file, setFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
-  const threads = useQuery(api.threads.list)
+  const hardcodedUserId = "jh725nd27yxr0pvbsyr77gnek57j09et" as Id<"users">
+  const threads = useQuery(api.threads.getThreads,{userId:hardcodedUserId})
   const createThread = useMutation(api.threads.create)
     .withOptimisticUpdate((localStore, args) => {
-      const currentThreads = localStore.getQuery(api.threads.list, {});
+      const currentThreads = localStore.getQuery(api.threads.getThreads, {userId:hardcodedUserId});
       if (currentThreads) {
         const newThread = {
           _id: `temp-${Date.now()}` as Id<"threads">,
@@ -105,7 +106,7 @@ const LaunchChat = () => {
           createdAt: Date.now(),
           mainThreadId: undefined,
         };
-        localStore.setQuery(api.threads.list, {}, [...currentThreads, newThread]);
+        localStore.setQuery(api.threads.getThreads, {userId:hardcodedUserId}, [...currentThreads, newThread]);
       }
     });
   const send = useMutation(api.message.send)
@@ -124,7 +125,6 @@ const LaunchChat = () => {
       );
     });
   const generateUploadUrl = useMutation(api.message.generateUploadUrl)
-  const hardcodedUserId = "jh725nd27yxr0pvbsyr77gnek57j09et" as Id<"users">
   
   const handleSendMessage = useCallback(async () => {
     if (!message.trim()) return

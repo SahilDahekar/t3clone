@@ -1,4 +1,6 @@
-import { mutation } from "./_generated/server";
+import { internalQuery, mutation, query } from "./_generated/server";
+import { v } from "convex/values";
+
 
 export const generateUploadUrl = mutation({
   handler: async (ctx) => {
@@ -6,3 +8,9 @@ export const generateUploadUrl = mutation({
   },
 });
 
+export const getUrl = mutation({
+  args: {storageId: v.id("_storage")},
+  handler: async (ctx,args) => {
+    return  await ctx.storage.getUrl(args.storageId) 
+  }
+});

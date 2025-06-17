@@ -16,7 +16,7 @@ export const chat = internalAction({
   },
   handler: async (ctx, { threadId, messageId }) => {
     try {
-      const model = google("gemini-1.5-flash");
+      const model = google("gemini-2.0-flash");
 
       const allMessages = await ctx.runQuery(
         internal.message.getMessagesForAI,
@@ -24,7 +24,7 @@ export const chat = internalAction({
       );
       if (!allMessages.length) throw new Error("No messages found");
 
-      const latest = allMessages[allMessages.length - 1];
+      const latest = allMessages[allMessages.length - 2];
 
       const history: CoreMessage[] = allMessages
         .slice(0, -1)
@@ -43,9 +43,11 @@ export const chat = internalAction({
         for (const part of latest.content) {
           if (part.type === "text") userText += part.text;
           if (part.type === "file") {
+            const fileResponse = await fetch(part.data); // `part.data` is URL
+            const arrayBuffer = await fileResponse.arrayBuffer();
             filePart = {
               type: "file",
-              data: part.data,
+              data: new Uint8Array(arrayBuffer), // ✅ correct binary buffer
               mimeType: part.mimeType,
             };
           }

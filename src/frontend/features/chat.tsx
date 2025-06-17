@@ -67,7 +67,8 @@ const Chat = () => {
   const navigate = useNavigate()
   const [message, setMessage] = useState("")
   const [selectedModel, setSelectedModel] = useState("Gemini 2.5 Flash")
-  const threads = useQuery(api.threads.list);
+  const threads = useQuery(api.threads.getThreads,
+    { userId: "jh725nd27yxr0pvbsyr77gnek57j09et" as Id<"users"> });
   const messages = useQuery(api.message.getMessages, 
     threadId ? { threadId: threadId as Id<"threads"> } : "skip"
   );
