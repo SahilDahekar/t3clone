@@ -8,8 +8,11 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import ChatInput from "./components/ChatInput"
-import React, { useCallback, useState, memo } from "react"
+import React, { useCallback, useState, useRef, memo } from "react"
 import { useNavigate } from "react-router"
+import { useQuery, useMutation } from "convex/react"
+import { api } from "../../../convex/_generated/api"
+import { Id } from "../../../convex/_generated/dataModel"
 
 // Import split components
 import QuickActions from "./components/QuickActions"
@@ -86,14 +89,102 @@ const initialThreads: Thread[] = [
 const LaunchChat = () => {
   const [message, setMessage] = useState("")
   const [selectedModel, setSelectedModel] = useState("Gemini 2.5 Flash")
+  const [file, setFile] = useState<File | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
+  const threads = useQuery(api.threads.list)
+  const createThread = useMutation(api.threads.create)
+    .withOptimisticUpdate((localStore, args) => {
+      const currentThreads = localStore.getQuery(api.threads.list, {});
+      if (currentThreads) {
+        const newThread = {
+          _id: `temp-${Date.now()}` as Id<"threads">,
+          _creationTime: Date.now(),
+          userId: args.userId,
+          title: args.title,
+          createdAt: Date.now(),
+          mainThreadId: undefined,
+        };
+        localStore.setQuery(api.threads.list, {}, [...currentThreads, newThread]);
+      }
+    });
+  const send = useMutation(api.message.send)
+    .withOptimisticUpdate((localStore, args) => {
+      const currentMessages = localStore.getQuery(api.message.getMessages, { threadId: args.threadId });
+      const newMessage = {
+        _id: `temp-msg-${Date.now()}` as Id<"messages">,
+        _creationTime: Date.now(),
+        threadId: args.threadId,
+        role: args.role,
+        content: args.content,
+        createdAt: Date.now(),
+      };
+      localStore.setQuery(api.message.getMessages, { threadId: args.threadId }, 
+        [...(currentMessages || []), newMessage]
+      );
+    });
+  const generateUploadUrl = useMutation(api.message.generateUploadUrl)
+  const hardcodedUserId = "jh725nd27yxr0pvbsyr77gnek57j09et" as Id<"users">
   
   const handleSendMessage = useCallback(async () => {
     if (!message.trim()) return
     
-    const newThreadId = Math.floor(Math.random() * 1000000)
-    navigate(`/chat/${newThreadId}`)
-  }, [message, navigate])
+    try {
+      // Create temporary thread ID for optimistic updates
+      const tempThreadId = `temp-${Date.now()}` as Id<"threads">;
+      
+      // Create thread with optimistic update
+      const threadId = await createThread({
+        userId: hardcodedUserId,
+        title: message.substring(0, 50)
+      }).catch((error) => {
+        // The optimistic update will automatically roll back on error
+        throw error;
+      });
+
+      // Prepare message content
+      const content: Array<{ 
+        type: "text", 
+        text: string 
+      } | { 
+        type: "file", 
+        data: string, 
+        mimeType: string, 
+        fileName?: string 
+      }> = [{ type: "text", text: message }];
+
+      // Handle file upload if present
+      if (file) {
+        const url = await generateUploadUrl();
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const base64 = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+
+        content.push({
+          type: "file",
+          data: base64?.toString().split(',')[1] || '',
+          mimeType: file.type,
+          fileName: file.name
+        });
+      }
+
+      // Send the initial message
+      await send({ 
+        threadId,
+        role: "user",
+        content,
+        parentMessageId: undefined
+      });
+
+      navigate(`/chat/${threadId}`);
+    } catch (error) {
+      console.error("Error creating thread:", error);
+    }
+  }, [message, createThread, send, navigate, file, generateUploadUrl, hardcodedUserId]);
 
   const handleQuestionSelect = useCallback((question: string) => {
     setMessage(question)
@@ -111,7 +202,12 @@ const LaunchChat = () => {
 
           <SidebarContent className="px-4">
             <ThreadList
-              threads={initialThreads}
+              threads={(threads || []).map(t => ({
+                id: t._id,
+                title: t.title,
+                date: new Date(t.createdAt).toLocaleDateString(),
+                messages: []
+              }))}
               selectedThread={null}
               setSelectedThread={handleSelectThread}
             />

@@ -10,7 +10,7 @@ export const getMessages = query({
     return await ctx.db
       .query("messages")
       .withIndex("by_thread", (q) => q.eq("threadId", args.threadId))
-      .order("desc")
+      .order("asc")
       .take(20);
   },
 });

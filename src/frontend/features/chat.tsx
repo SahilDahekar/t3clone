@@ -67,167 +67,23 @@ const Chat = () => {
   const navigate = useNavigate()
   const [message, setMessage] = useState("")
   const [selectedModel, setSelectedModel] = useState("Gemini 2.5 Flash")
-  const [threads, setThreads] = useState<Thread[]>(initialThreads)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const threadId_convex = "jn72zkaz8ggtwj3aj35pzjg6jx7hq7g0" as Id<"threads">
-  const getMessage = useQuery(api.message.getMessages, {threadId:threadId_convex});
-  const createThread = useMutation(api.message.send);
-  console.log("getMessage", getMessage)
+  const threads = useQuery(api.threads.list);
+  const messages = useQuery(api.message.getMessages, 
+    threadId ? { threadId: threadId as Id<"threads"> } : "skip"
+  );
+  const send = useMutation(api.message.send);
+  const generateUploadUrl = useMutation(api.message.generateUploadUrl);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Get thread title from query results
+  const threadTitle = threads?.find(t => t._id === threadId)?.title ?? "New Chat";
 
-  const currentThread = threads.find((thread) => thread.id === threadId?.toString())
-
-  const handleStreamingResponse = useCallback(async (response: Response, threadId: string | undefined) => {
-    const reader = response.body!.getReader()
-    const decoder = new TextDecoder()
-    const assistantMessageId = (Date.now() + 1).toString()
-    
-    const assistantMessage: Message = {
-      id: assistantMessageId,
-      sender: "assistant",
-      content: "",
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    }
-
-    setThreads((prevThreads: Thread[]) =>
-      prevThreads.map((thread: Thread) =>
-        thread.id === threadId
-          ? { ...thread, messages: [...thread.messages, assistantMessage] }
-          : thread
-      )
-    )
-
-    let buffer = ""
-    
-    try {
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        const chunk = decoder.decode(value, { stream: true })
-        buffer += chunk
-        
-        const lines = buffer.split('\n')
-        buffer = lines.pop() || ""
-        
-        for (const line of lines) {
-          if (line.trim()) {
-            let content = ""
-            
-            if (line.startsWith('0:')) {
-              const quotedContent = line.slice(2)
-              
-              try {
-                content = JSON.parse(quotedContent)
-              } catch (e) {
-                content = quotedContent
-                  .replace(/^"/, '')
-                  .replace(/"$/, '')
-                  .replace(/\\"/g, '"')
-                  .replace(/\\n/g, '\n')
-                  .replace(/\\t/g, '\t')
-                  .replace(/\\\\/g, '\\')
-              }
-            }
-            else if (line.startsWith('f:') || line.startsWith('e:') || line.startsWith('d:')) {
-              continue
-            }
-
-            if (content) {
-              setThreads((prevThreads: Thread[]) =>
-                prevThreads.map((thread: Thread) =>
-                  thread.id === threadId
-                    ? {
-                        ...thread,
-                        messages: thread.messages.map((msg: Message) =>
-                          msg.id === assistantMessageId
-                            ? { ...msg, content: msg.content + content }
-                            : msg
-                        ),
-                      }
-                    : thread
-                )
-              )
-            }
-          }
-        }
-      }
-      
-      if (buffer.trim() && buffer.startsWith('0:')) {
-        const quotedContent = buffer.slice(2)
-        let content = ""
-        
-        try {
-          content = JSON.parse(quotedContent)
-        } catch (e) {
-          content = quotedContent
-            .replace(/^"/, '')
-            .replace(/"$/, '')
-            .replace(/\\"/g, '"')
-            .replace(/\\n/g, '\n')
-            .replace(/\\t/g, '\t')
-            .replace(/\\\\/g, '\\')
-        }
-        
-        if (content) {
-          setThreads((prevThreads: Thread[]) =>
-            prevThreads.map((thread: Thread) =>
-              thread.id === threadId
-                ? {
-                    ...thread,
-                    messages: thread.messages.map((msg: Message) =>
-                      msg.id === assistantMessageId
-                        ? { ...msg, content: msg.content + content }
-                        : msg
-                    ),
-                  }
-                : thread
-            )
-          )
-        }
-      }
-    } catch (error) {
-      console.error('Streaming error:', error)
-      setThreads((prevThreads: Thread[]) =>
-        prevThreads.map((thread: Thread) =>
-          thread.id === threadId
-            ? {
-                ...thread,
-                messages: thread.messages.map((msg: Message) =>
-                  msg.id === assistantMessageId
-                    ? { ...msg, content: msg.content + "\n\n*Error: Failed to load response*" }
-                    : msg
-                ),
-              }
-            : thread
-        )
-      )
-    } finally {
-      reader.releaseLock()
-    }
-  }, [])
+  // Removed legacy streaming handler - Convex handles updates automatically
 
   const handleSendMessage = useCallback(async () => {
     if (!message.trim() || !threadId) return
     setMessage("")
-
-    setThreads((prevThreads: Thread[]) =>
-      prevThreads.map((thread: Thread) =>
-        thread.id === threadId
-          ? {
-              ...thread,
-              messages: [
-                ...thread.messages,
-                {
-                  id: (Date.now()).toString(),
-                  sender: "user",
-                  content: message,
-                  timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-                },
-              ],
-            }
-          : thread
-      )
-    )
 
     try {
       const response = await fetch("/api/chat", {
@@ -242,18 +98,47 @@ const Chat = () => {
       })
       console.log("Sending message:", message)
           
-          await createThread({
-            body: message,
-            sender: "user",
-            threadId: threadId_convex,
-        })
+    const content: Array<{ 
+      type: "text", 
+      text: string 
+    } | { 
+      type: "file", 
+      data: string, 
+      mimeType: string, 
+      fileName?: string 
+    }> = [{ type: "text", text: message }];
+    
+    if (file) {
+      const url = await generateUploadUrl();
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const base64 = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(blob);
+      });
 
+      content.push({
+        type: "file",
+        data: base64?.toString().split(',')[1] || '',
+        mimeType: file.type,
+        fileName: file.name
+      });
+    }
+
+    await send({ 
+      threadId: threadId as Id<"threads">,
+      role: "user",
+      content,
+      parentMessageId: undefined
+    });
+
+      // Convex handles the response automatically
       if (!response.body) throw new Error('No response body')
-      await handleStreamingResponse(response, threadId)
     } catch (error) {
       console.error('Streaming error:', error)
     }
-  }, [message, threadId, selectedModel, threads, handleStreamingResponse])
+  }, [message, threadId, generateUploadUrl, send, file])
 
   const handleNewChat = useCallback(() => {
     navigate('/chat')
@@ -267,8 +152,8 @@ const Chat = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [threads, threadId])
 
-  if (!currentThread) {
-    return <div>Thread not found</div>
+  if (!threadId || !messages) {
+    return <div>Loading...</div>;
   }
 
   return (
@@ -279,7 +164,12 @@ const Chat = () => {
 
           <SidebarContent className="px-4">
             <ThreadList
-              threads={threads}
+              threads={(threads || []).map(t => ({
+                id: t._id,
+                title: t.title,
+                date: new Date(t.createdAt).toLocaleDateString(),
+                messages: []
+              }))}
               selectedThread={threadId ?? null}
               setSelectedThread={handleSelectThread}
             />
@@ -301,12 +191,17 @@ const Chat = () => {
         <SidebarInset className="flex flex-col h-screen">
           <header className="flex h-16 items-center gap-2 px-4 border-b border-border sticky top-0 bg-background z-10">
             <SidebarTrigger className="hover:bg-accent text-muted-foreground" />
-            <div className="text-lg font-medium">{currentThread.title}</div>
+            <div className="text-lg font-medium">{threadTitle}</div>
           </header>
 
           <main className="flex-1 flex flex-col overflow-hidden">
             <MessagesList
-              messages={currentThread.messages}
+              messages={(messages || []).map(m => ({
+                id: m._id,
+                sender: m.role,
+                content: m.content.filter(c => c.type === "text").map(c => c.text).join(" "),
+                timestamp: new Date(m.createdAt).toLocaleTimeString()
+              }))}
               messagesEndRef={messagesEndRef}
             />
 
@@ -330,4 +225,3 @@ const Chat = () => {
 }
 
 export default memo(Chat)
-
