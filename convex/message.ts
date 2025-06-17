@@ -1,47 +1,93 @@
-import { internalMutation, query } from "./_generated/server";
+import { mutation, query, internalQuery, internalMutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
-import { mutation } from "./_generated/server";
+
+
 
 export const getMessages = query({
-  args: {
-    threadId: v.id("threads"),
-  },
+  args: { threadId: v.id("threads") },
   handler: async (ctx, args) => {
-    const messages = await ctx.db
+    return await ctx.db
       .query("messages")
       .withIndex("by_thread", (q) => q.eq("threadId", args.threadId))
       .order("desc")
-      .collect(); 
-    return messages;
+      .take(20);
   },
 });
 
-export const addMessage = mutation({
+
+
+export const getMessagesForAI = internalQuery({
+  args: { threadId: v.id("threads") },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("messages")
+      .withIndex("by_thread", (q) => q.eq("threadId", args.threadId))
+      .order("asc")
+      .take(100);
+  },
+});
+
+
+export const send = mutation({
   args: {
     threadId: v.id("threads"),
-    sender: v.string(),
-    body: v.string(),
+    role: v.literal("user"),
+    content: v.array(
+      v.union(
+        v.object({ type: v.literal("text"), text: v.string() }),
+        v.object({
+          type: v.literal("file"),
+          data: v.string(),
+          mimeType: v.string(),
+          fileName: v.optional(v.string()),
+        })
+      )
+    ),
+    parentMessageId: v.optional(v.id("messages")),  
   },
-  handler: async (ctx, args) => {
-    const messageId = await ctx.db.insert("messages", {
-      threadId: args.threadId,
-      sender: args.sender,
-      body: "...",
+  handler: async (ctx, { threadId, role, content, parentMessageId }) => {
+    await ctx.db.insert("messages", {
+      threadId,
+      role,
+      content,
+      parentMessageId, 
       createdAt: Date.now(),
-      // isComplete: false,
     });
 
-    return "success";
+    const assistantMessageId = await ctx.db.insert("messages", {
+      threadId,
+      role: "assistant",
+      content: [{ type: "text", text: "..." }],
+      createdAt: Date.now(),
+    });
+
+    await ctx.scheduler.runAfter(0, internal.functions.chat, {
+      threadId,
+      messageId: assistantMessageId,
+    });
   },
 });
 
-// export const updateMessage = internalMutation({
-//    args: {
-//     messageId: v.id("messages"),
-//     body: v.string(),
-//     isComplete: v.boolean(),
-//   },
-//   handler: async (ctx, { messageId, body, isComplete }) => {
-//     await ctx.db.patch(messageId, { body, isComplete });
-//   },
-// })
+
+
+export const updateMessage = internalMutation({
+  args: {
+    messageId: v.id("messages"),
+    content: v.array(
+      v.object({
+        type: v.literal("text"),
+        text: v.string(),
+      })
+    ),
+  },
+  handler: async (ctx, { messageId, content }) => {
+    await ctx.db.patch(messageId, { content });
+  },
+});
+
+export const generateUploadUrl = mutation({
+  handler: async (ctx) => {
+    return await ctx.storage.generateUploadUrl();
+  },
+});

@@ -17,6 +17,7 @@ import SampleQuestions from "./components/SampleQuestions"
 import ChatHeader from "./components/ChatHeader"
 import ThreadList from "./components/ThreadList"
 
+
 export interface Thread {
   id: string
   title: string
@@ -86,11 +87,10 @@ const LaunchChat = () => {
   const [message, setMessage] = useState("")
   const [selectedModel, setSelectedModel] = useState("Gemini 2.5 Flash")
   const navigate = useNavigate()
-
+  
   const handleSendMessage = useCallback(async () => {
     if (!message.trim()) return
-
-    // Create a new thread and navigate to it
+    
     const newThreadId = Math.floor(Math.random() * 1000000)
     navigate(`/chat/${newThreadId}`)
   }, [message, navigate])

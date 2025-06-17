@@ -13,6 +13,9 @@ import { useParams, useNavigate } from "react-router"
 import ChatHeader from "./components/ChatHeader"
 import MessagesList from "./components/MessagesList"
 import ThreadList from "./components/ThreadList"
+import { api } from "../../../convex/_generated/api"
+import { useQuery , useMutation } from "convex/react"
+import { Id } from "../../../convex/_generated/dataModel"
 
 import { Thread, Message } from "./launchChat" // Adjust the import path as necessary
 
@@ -66,6 +69,10 @@ const Chat = () => {
   const [selectedModel, setSelectedModel] = useState("Gemini 2.5 Flash")
   const [threads, setThreads] = useState<Thread[]>(initialThreads)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const threadId_convex = "jn72zkaz8ggtwj3aj35pzjg6jx7hq7g0" as Id<"threads">
+  const getMessage = useQuery(api.message.getMessages, {threadId:threadId_convex});
+  const createThread = useMutation(api.message.send);
+  console.log("getMessage", getMessage)
 
   const currentThread = threads.find((thread) => thread.id === threadId?.toString())
 
@@ -233,6 +240,13 @@ const Chat = () => {
           selectedModel,
         })
       })
+      console.log("Sending message:", message)
+          
+          await createThread({
+            body: message,
+            sender: "user",
+            threadId: threadId_convex,
+        })
 
       if (!response.body) throw new Error('No response body')
       await handleStreamingResponse(response, threadId)
@@ -245,7 +259,7 @@ const Chat = () => {
     navigate('/chat')
   }, [navigate])
 
-  const handleSelectThread = useCallback((threadId: number) => {
+  const handleSelectThread = useCallback((threadId: string) => {
     navigate(`/chat/${threadId}`)
   }, [navigate])
 
@@ -266,7 +280,7 @@ const Chat = () => {
           <SidebarContent className="px-4">
             <ThreadList
               threads={threads}
-              selectedThread={Number(threadId)}
+              selectedThread={threadId ?? null}
               setSelectedThread={handleSelectThread}
             />
           </SidebarContent>
