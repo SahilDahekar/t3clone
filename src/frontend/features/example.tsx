@@ -22,7 +22,7 @@ export default function Example() {
   const createThread = useMutation(api.threads.create);
   const send = useMutation(api.message.send);
 
-  const hardcodedUserId = "j575vx3femktqe2rfzeg0j8t9x7hpvkj" as Id<"users">; 
+  const hardcodedUserId = "j572pt27hbqy8rkdgjydk9tjj97j1y0e" as Id<"users">; 
   const defaultChatName = "New Chat";
 
   async function handleNewChat() {

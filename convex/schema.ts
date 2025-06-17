@@ -6,7 +6,6 @@ export default defineSchema({
   users: defineTable({
     name: v.string(),
     tokenIdentifier: v.string(),
-    threadIds: v.array(v.id("threads")),
   }).index("by_token", ["tokenIdentifier"]),
 
   threads: defineTable({
