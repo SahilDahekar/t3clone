@@ -10,7 +10,7 @@ export const getMessages = query({
     return await ctx.db
       .query("messages")
       .withIndex("by_thread", (q) => q.eq("threadId", args.threadId))
-      .order("desc")
+      .order("asc")
       .take(20);
   },
 });
@@ -46,7 +46,8 @@ export const send = mutation({
     ),
     parentMessageId: v.optional(v.id("messages")),  
   },
-  handler: async (ctx, { threadId, role, content, parentMessageId }) => {
+  handler: async (ctx, { threadId, role, content}) => {
+    
     await ctx.db.insert("messages", {
       threadId,
       role,

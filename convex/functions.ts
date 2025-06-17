@@ -43,9 +43,11 @@ export const chat = internalAction({
         for (const part of latest.content) {
           if (part.type === "text") userText += part.text;
           if (part.type === "file") {
+            const fileResponse = await fetch(part.data); // `part.data` is URL
+            const arrayBuffer = await fileResponse.arrayBuffer();
             filePart = {
               type: "file",
-              data: part.data,
+              data: new Uint8Array(arrayBuffer), // ✅ correct binary buffer
               mimeType: part.mimeType,
             };
           }
