@@ -189,10 +189,7 @@ const Chat = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages, threadId]) // Changed `threads` to `messages` as scroll depends on message list update
 
-  // Only show loading if messages for the specific thread are not yet loaded
-  if (!threadId || messages === undefined) { // Check for undefined for initial loading state
-    return <div>Loading...</div>;
-  }
+
 
   return (
     <div className="min-h-screen bg-background text-foreground">
