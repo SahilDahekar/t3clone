@@ -78,28 +78,39 @@ export const branch = mutation({
       throw new Error("User not found");
     }
 
+    // Get original thread title for the new branch title
+    const originalThread = await ctx.db.get(mainThreadId);
+    const branchTitle = originalThread?.title 
+      ? `Branch of ${originalThread.title}`
+      : title;
+
+    // Create new thread
     const threadId = await ctx.db.insert("threads", {
       userId: user._id,
-      title,
+      title: branchTitle,
       createdAt: Date.now(),
       mainThreadId,
     });
+
+    // Copy all messages from original thread
+    const messages = await ctx.db
+      .query("messages")
+      .withIndex("by_thread", (q) => q.eq("threadId", mainThreadId))
+      .collect();
+
+    console.log(messages);
+
+    for (const message of messages) {
+      await ctx.db.insert("messages", {
+        threadId,
+        userId: message.userId,
+        role: message.role,
+        content: message.content,
+        createdAt: Date.now()
+      });
+    }
+
     return threadId;
-    // This is a new thread that branches from the main thread so insert old messages to this thread
-    // const messages = await ctx.db
-    //   .query("messages")
-    //   .withIndex("by_thread", (q) => q.eq("threadId", mainThreadId))
-    //   .collect();
-    
-    // // now insert messages into the new thread
-    // for (const message of messages) {
-    //   await ctx.db.insert("messages", {
-    //     threadId,
-    //     role: message.role,
-    //     content: message.content,
-    //     createdAt: Date.now()
-    //   });
-    // }
   },
 });
 
@@ -115,4 +126,3 @@ export const updateModelProvider = mutation({
     await ctx.db.patch(threadId, { modelProvider: provider });
   },
 });
-

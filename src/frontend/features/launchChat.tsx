@@ -27,7 +27,7 @@ import { LogIn } from "lucide-react"
 
 
 export interface Thread {
-  id: string
+  id: Id<"threads">
   title: string
   date: string
   messages: Message[]
@@ -217,6 +217,7 @@ const LaunchChat = () => {
               }))}
               selectedThread={null} // No thread selected on this page
               setSelectedThread={handleSelectThread}
+              tokenIdentifier={user?.id ?? ""}
             />
           </SidebarContent>
 

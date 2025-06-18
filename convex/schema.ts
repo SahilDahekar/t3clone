@@ -41,4 +41,11 @@ export default defineSchema({
     ),
     createdAt: v.number(),
   }).index("by_thread", ["threadId"]),
+
+  sharedThreads: defineTable({
+    threadId: v.id("threads"),
+    shareId: v.string(), 
+    createdAt: v.number(),
+  }).index("by_shareId", ["shareId"]),
+  
 });

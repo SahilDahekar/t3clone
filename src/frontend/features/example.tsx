@@ -53,8 +53,11 @@ export default function Example() {
       alert("Please enter a project ID first");
       return;
     }
-    // const thread = await createThread({ title: projectId, userId: hardcodedUserId });
-    setActiveThread(threads);
+    const threadId = await createThread({ 
+      title: projectId, 
+      tokenIdentifier: hardcodedUserId 
+    });
+    setActiveThread(threadId);
     setParentMessageId(undefined);
     setProjectId("");
   }
@@ -92,7 +95,7 @@ export default function Example() {
     }
 
     try {
-      await send({ threadId: activeThread, role: "user", content, parentMessageId , tokenIdentifier });
+      await send({ threadId: activeThread, role: "user", content, parentMessageId, tokenIdentifier: hardcodedUserId });
       postSendCleanup();
     } catch (error) {
       console.error("Failed to send message:", error);

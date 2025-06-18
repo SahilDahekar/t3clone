@@ -17,10 +17,9 @@ import type * as files from "../files.js";
 import type * as functions from "../functions.js";
 import type * as message from "../message.js";
 import type * as registry from "../registry.js";
+import type * as shareThread from "../shareThread.js";
 import type * as threads from "../threads.js";
 import type * as user from "../user.js";
-import type * as userSettings from "../userSettings.js";
-import type * as utils_encryption from "../utils/encryption.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -35,10 +34,9 @@ declare const fullApi: ApiFromModules<{
   functions: typeof functions;
   message: typeof message;
   registry: typeof registry;
+  shareThread: typeof shareThread;
   threads: typeof threads;
   user: typeof user;
-  userSettings: typeof userSettings;
-  "utils/encryption": typeof utils_encryption;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

@@ -26,46 +26,46 @@ import { useTheme } from "next-themes"
 
 const models = ["Gemini 2.5 Flash", "GPT-4", "Claude 3.5 Sonnet", "Llama 3.1"]
 
-const initialThreads: Thread[] = [
-  {
-    id: "d96a40f1-1f5a-4abd-9f05-d9c24bcc04a0",
-    title: "What is T3 Stack?",
-    date: "Today",
-    messages: [
-      {
-        id: "61734ff1-ccb0-46ab-b5af-5cfff35230a1",
-        sender: "user",
-        content: "Can you explain what T3 Stack is?",
-        timestamp: "10:30 AM",
-      },
-      {
-        id: "274dd225-1608-457a-8c2c-0d7809176089",
-        sender: "assistant",
-        content: "T3 Stack is a modern web development stack that combines TypeScript, tRPC, and Tailwind CSS. It's designed for building typesafe full-stack applications with excellent developer experience.",
-        timestamp: "10:31 AM",
-      },
-    ],
-  },
-  {
-    id: "f5d2d446-312d-46c3-a6e7-b4fe67ef7667",
-    title: "T3 Stack Components",
-    date: "Today",
-    messages: [
-      {
-        id: "7500999b-c6c4-463d-b4dc-0c61a1973ace",
-        sender: "user",
-        content: "What are the main components of T3 Stack?",
-        timestamp: "11:15 AM",
-      },
-      {
-        id: "f28ce559-ff28-47c4-8cfd-b4c950c526a6",
-        sender: "assistant",
-        content: "The main components are:\n- TypeScript for type safety\n- tRPC for end-to-end typesafe APIs\n- Tailwind CSS for styling\n- Next.js for the framework\n- Prisma for database management\n- NextAuth.js for authentication",
-        timestamp: "11:16 AM",
-      },
-    ],
-  }
-]
+// const initialThreads: Thread[] = [
+//   {
+//     id: "d96a40f1-1f5a-4abd-9f05-d9c24bcc04a0",
+//     title: "What is T3 Stack?",
+//     date: "Today",
+//     messages: [
+//       {
+//         id: "61734ff1-ccb0-46ab-b5af-5cfff35230a1",
+//         sender: "user",
+//         content: "Can you explain what T3 Stack is?",
+//         timestamp: "10:30 AM",
+//       },
+//       {
+//         id: "274dd225-1608-457a-8c2c-0d7809176089",
+//         sender: "assistant",
+//         content: "T3 Stack is a modern web development stack that combines TypeScript, tRPC, and Tailwind CSS. It's designed for building typesafe full-stack applications with excellent developer experience.",
+//         timestamp: "10:31 AM",
+//       },
+//     ],
+//   },
+//   {
+//     id: "f5d2d446-312d-46c3-a6e7-b4fe67ef7667",
+//     title: "T3 Stack Components",
+//     date: "Today",
+//     messages: [
+//       {
+//         id: "7500999b-c6c4-463d-b4dc-0c61a1973ace",
+//         sender: "user",
+//         content: "What are the main components of T3 Stack?",
+//         timestamp: "11:15 AM",
+//       },
+//       {
+//         id: "f28ce559-ff28-47c4-8cfd-b4c950c526a6",
+//         sender: "assistant",
+//         content: "The main components are:\n- TypeScript for type safety\n- tRPC for end-to-end typesafe APIs\n- Tailwind CSS for styling\n- Next.js for the framework\n- Prisma for database management\n- NextAuth.js for authentication",
+//         timestamp: "11:16 AM",
+//       },
+//     ],
+//   }
+// ]
 
 const Chat = () => {
   const { threadId } = useParams()
@@ -199,13 +199,14 @@ const Chat = () => {
 
           <SidebarContent className="px-4">
             <ThreadList
+              tokenIdentifier={user?.id ?? ""}
               threads={(threads || []).map(t => ({
                 id: t._id,
                 title: t.title,
                 date: new Date(t.createdAt).toLocaleDateString(),
                 messages: [] // Messages are loaded separately per thread
               }))}
-              selectedThread={threadId ?? null}
+              selectedThread={threadId ? threadId as Id<"threads"> : null}
               setSelectedThread={handleSelectThread}
             />
           </SidebarContent>
@@ -241,15 +242,17 @@ const Chat = () => {
           </header>
 
           <main className="flex-1 flex flex-col overflow-hidden">
-            <MessagesList
-              messages={(messages || []).map(m => ({
-                id: m._id,
-                sender: m.role,
-                content: m.content.filter(c => c.type === "text").map(c => c.text).join(" "),
-                timestamp: new Date(m.createdAt).toLocaleTimeString()
-              }))}
-              messagesEndRef={messagesEndRef}
-            />
+          <MessagesList
+            messages={(messages || []).map(m => ({
+              id: m._id,
+              sender: m.role,
+              content: m.content.filter(c => c.type === "text").map(c => c.text).join(" "),
+              timestamp: new Date(m.createdAt).toLocaleTimeString()
+            }))}
+            messagesEndRef={messagesEndRef}
+            threadId={threadId as Id<"threads">}
+            tokenIdentifier={user?.id ?? ""}
+          />
 
             <div className="p-4 border-t border-border bg-background sticky bottom-0">
               <div className="max-w-4xl mx-auto">

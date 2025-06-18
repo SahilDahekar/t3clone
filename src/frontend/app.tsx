@@ -4,6 +4,7 @@ import LaunchChat from "@/frontend/features/launchChat";
 import { ConvexClientProvider, clerk_key } from "@/app/ConvexClientProvider";
 // import Example from "@/frontend/features/example";
 import { ClerkProvider } from "@clerk/clerk-react";
+import SharePage from "./features/sharedPage";
 
 function App() {
   return (
@@ -16,8 +17,10 @@ function App() {
           <Routes>
               <Route path="chat/:threadId" element={<Chat/>} />
               <Route path="chat" element={<LaunchChat/>} />
+              <Route path="chat/sharedChat/:sharedId" element={<SharePage/>} />
               {/* <Route path="/" element={<Example/>} /> */}
               <Route path="*" element={<div>Page not found</div>} />
+
           </Routes>
         </BrowserRouter>
       </ConvexClientProvider>

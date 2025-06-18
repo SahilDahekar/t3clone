@@ -26,14 +26,14 @@ export const chat = internalAction({
       let apiKey: string | undefined = undefined;
 
       // Get API key if needed
-      if (modelProvider !== 'gemini') {
-        const apiKeyResult = await ctx.runQuery(internal.userSettings.getApiKey, {
-          tokenIdentifier: thread.userId,
-          provider: modelProvider
-        });
-        apiKey = apiKeyResult || undefined;
-        if (!apiKey) throw new Error(`No API key found for ${modelProvider}`);
-      }
+      // if (modelProvider !== 'gemini') {
+      //   const apiKeyResult = await ctx.runQuery(internal.userSettings.getApiKey, {
+      //     tokenIdentifier: thread.userId,
+      //     provider: modelProvider
+      //   });
+      //   apiKey = apiKeyResult || undefined;
+      //   if (!apiKey) throw new Error(`No API key found for ${modelProvider}`);
+      // }
 
       // Initialize model with API key
       switch (modelProvider) {

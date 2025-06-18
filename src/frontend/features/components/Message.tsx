@@ -1,5 +1,5 @@
 import { memo, useState } from "react"
-import { Copy, Download } from "lucide-react"
+import { Copy, Download, GitBranch } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import ReactMarkdown from "react-markdown"
 import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter"
@@ -7,6 +7,10 @@ import { oneDark as darktheme } from "react-syntax-highlighter/dist/cjs/styles/p
 import { oneLight as lighttheme } from "react-syntax-highlighter/dist/esm/styles/prism"
 import { useTheme } from "next-themes"
 import type { Components } from "react-markdown"
+import { useMutation } from "convex/react"
+import { api } from "@/../convex/_generated/api"
+
+import type { Id } from "@/../convex/_generated/dataModel";
 
 interface MessageProps {
   message: {
@@ -16,9 +20,18 @@ interface MessageProps {
     timestamp: string
     isCode?: boolean
   }
+  threadId: Id<"threads">
+  tokenIdentifier: string
+  onThreadSwitch?: (newThreadId: Id<"threads">) => void
 }
 
-const Message = memo(function Message({ message: msg }: MessageProps) {
+const Message = memo(function Message({ 
+  message: msg,
+  threadId,
+  tokenIdentifier,
+  onThreadSwitch 
+}: MessageProps) {
+  const branch = useMutation(api.threads.branch);
   const [copied, setCopied] = useState(false)
   const { theme } = useTheme()
 
@@ -176,6 +189,36 @@ const Message = memo(function Message({ message: msg }: MessageProps) {
         <div className="text-xs opacity-70 mt-3 text-right">
           {msg.timestamp}
         </div>
+        
+        {msg.sender === "assistant" && (
+          <div className="flex gap-2 mt-2 justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-3 text-muted-foreground"
+              onClick={async () => {
+                const newThreadId = await branch({
+                  tokenIdentifier,
+                  mainThreadId: threadId,
+                  title: "Branch" // Title will be auto-generated in the mutation
+                });
+                onThreadSwitch?.(newThreadId);
+              }}
+            >
+              <GitBranch className="h-4 w-4 mr-2" />
+              Branch
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-3 text-muted-foreground"
+              onClick={() => handleCopy(processedContent)}
+            >
+              <Copy className="h-4 w-4 mr-2" />
+              {copied ? "Copied!" : "Copy"}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   )
