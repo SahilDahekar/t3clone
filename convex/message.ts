@@ -102,3 +102,18 @@ export const generateUploadUrl = mutation({
     return await ctx.storage.generateUploadUrl();
   },
 });
+
+export const updateMessages = mutation({
+  args: {
+    messageId: v.id("messages"),
+    content: v.array(
+      v.object({
+        type: v.literal("text"),
+        text: v.string(),
+      })
+    ),
+  },
+  handler: async (ctx, { messageId, content }) => {
+    await ctx.db.patch(messageId, { content });
+  },
+});

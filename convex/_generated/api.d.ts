@@ -20,6 +20,7 @@ import type * as registry from "../registry.js";
 import type * as threads from "../threads.js";
 import type * as user from "../user.js";
 import type * as userSettings from "../userSettings.js";
+import type * as utils_encryption from "../utils/encryption.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   threads: typeof threads;
   user: typeof user;
   userSettings: typeof userSettings;
+  "utils/encryption": typeof utils_encryption;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

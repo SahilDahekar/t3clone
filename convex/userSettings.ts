@@ -1,6 +1,6 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
-import { Id } from "./_generated/dataModel";
+import { encrypt , decrypt } from "./utils/encryption";
 
 // Save or update API key for a user
 export const saveApiKey = mutation({
@@ -35,7 +35,7 @@ export const saveApiKey = mutation({
       // Create new key entry
       await ctx.db.insert("userSettings", {
         userId: user._id,
-        apiKey: args.apiKey,
+        apiKey: encrypt(args.apiKey),
         provider: args.provider,
         createdAt: Date.now(),
       });
@@ -46,7 +46,7 @@ export const saveApiKey = mutation({
 });
 
 // Retrieve API key for a user
-export const getApiKey = query({
+export const getApiKey = internalQuery({
   args: {
     tokenIdentifier: v.string(),
     provider: v.string()
@@ -69,16 +69,8 @@ export const getApiKey = query({
       )
       .first();
 
-    return setting?.apiKey || null;
+    return setting ? decrypt(setting.apiKey) : null;
   },
 });
 
-// Validate an API key (simplified example)
-export const validateApiKey = query({
-  args: { apiKey: v.string() },
-  handler: async (_, args) => {
-    // In a real implementation, you would make a test API call
-    // For now, just validate the format
-    return args.apiKey.startsWith("AIza") && args.apiKey.length > 30;
-  },
-});
+

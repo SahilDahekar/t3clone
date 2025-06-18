@@ -61,15 +61,10 @@ const LaunchChat = () => {
   const { user } = useUser()
   const { theme } = useTheme()
 
-  // Redirect if user is not logged in
-  // It's generally better to handle this with Clerk's middleware or a layout component
-  // For basic cases, this client-side check can work but might cause flickering.
-  
-
 
   const threads = useQuery(api.threads.getThreads, { tokenIdentifier: user?.id ?? "" });
   
-  // NEW: Store user mutation - ensure it's imported in your api/index.ts
+
   const storeUser = useMutation(api.user.store);
 
   const createThread = useMutation(api.threads.create)
@@ -81,9 +76,9 @@ const LaunchChat = () => {
         userId: user?.id as Id<"users">, // Use Clerk's user ID
         _creationTime: Date.now(),
         title: args.title,
-        tokenIdentifier: args.tokenIdentifier, // Use tokenIdentifier from args, matching schema
+        tokenIdentifier: args.tokenIdentifier, 
         createdAt: Date.now(),
-        // mainThreadId: undefined is usually handled by the mutation itself if optional
+        
       };
       localStore.setQuery(api.threads.getThreads, { tokenIdentifier: user?.id ?? "" }, [...currentThreads, newThread]);
     }

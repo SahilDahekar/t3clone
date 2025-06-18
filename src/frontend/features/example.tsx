@@ -12,11 +12,13 @@
 //   const [text, setText] = useState("");
 //   const [file, setFile] = useState<File | null>(null);
 //   const [isUploading, setIsUploading] = useState(false);
+//   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+//   const [apiKeyInput, setApiKeyInput] = useState("");
 //   const fileInputRef = useRef<HTMLInputElement>(null);
 //   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-//   // const hardcodedUserId = "j572pt27hbqy8rkdgjydk9tjj97j1y0e" as Id<"users">; 
-//   // const threads = useQuery(api.threads.getThreads, {userId: hardcodedUserId});
+//   const hardcodedUserId = "j572pt27hbqy8rkdgjydk9tjj97j1y0e" as Id<"users">; 
+//   const threads = useQuery(api.threads.getThreads, {tokenIdentifier: hardcodedUserId});
   
 //   const fileUploadUrl = useMutation(api.files.generateUploadUrl);
 //   const getUrl = useMutation(api.files.getUrl);
@@ -27,7 +29,24 @@
 
 //   const createThread = useMutation(api.threads.create);
 //   const send = useMutation(api.message.send);
+//   const updateModelProvider = useMutation(api.threads.updateModelProvider);
+//   const saveApiKey = useMutation(api.userSettings.saveApiKey);
 //   const defaultChatName = "New Chat";
+
+//   const handleSaveApiKey = async () => {
+//     if (activeThread && apiKeyInput) {
+//       const thread = threads?.find(t => t._id === activeThread);
+//       if (thread) {
+//         await saveApiKey({
+//           tokenIdentifier: thread.userId,
+//           apiKey: apiKeyInput,
+//           provider: thread.modelProvider || 'gemini'
+//         });
+//         setShowApiKeyModal(false);
+//         setApiKeyInput("");
+//       }
+//     }
+//   };
 
 //   async function handleNewChat() {
 //     if (!projectId) {
@@ -35,7 +54,7 @@
 //       return;
 //     }
 //     // const thread = await createThread({ title: projectId, userId: hardcodedUserId });
-//     setActiveThread(thread);
+//     setActiveThread(threads);
 //     setParentMessageId(undefined);
 //     setProjectId("");
 //   }
@@ -73,7 +92,7 @@
 //     }
 
 //     try {
-//       await send({ threadId: activeThread, role: "user", content, parentMessageId });
+//       await send({ threadId: activeThread, role: "user", content, parentMessageId , tokenIdentifier });
 //       postSendCleanup();
 //     } catch (error) {
 //       console.error("Failed to send message:", error);
@@ -118,29 +137,36 @@
 //     }
 //   }
 
+//   const [apiKey, setApiKey] = useState("");
+//   const [keyStatus, setKeyStatus] = useState<{valid: boolean, message: string} | null>(null);
+  
+//   const saveApiKey = async () => {
+//     if (!apiKey) return;
+    
+//     try {
+//       // In a real app, we would encrypt the key before sending
+//       await fetch("/api/saveKey", {
+//         method: "POST",
+//         headers: { "Content-Type": "application/json" },
+//         body: JSON.stringify({ 
+//           userId: hardcodedUserId, 
+//           apiKey,
+//           provider: "google" 
+//         })
+//       });
+//       setKeyStatus({ valid: true, message: "API key saved successfully!" });
+//     } catch (error) {
+//       console.error("Failed to save API key:", error);
+//       setKeyStatus({ valid: false, message: "Failed to save API key" });
+//     }
+//   };
+
 //   return (
 //     <div className="flex h-screen bg-gray-50">
 //       {/* Sidebar */}
 //       <aside className="w-64 bg-gradient-to-b from-blue-50 to-indigo-50 p-4 flex flex-col border-r border-gray-200">
-//         <div className="mb-8">
-//           <h2 className="text-lg font-bold text-indigo-800 mb-3 flex items-center">
-//             <FolderPlus className="mr-2" size={20} /> Project
-//           </h2>
-//           <div className="flex space-x-2">
-//             <input
-//               className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-//               value={projectId}
-//               onChange={(e) => setProjectId(e.target.value)}
-//               placeholder="Enter Project ID"
-//             />
-//             <button
-//               onClick={handleNewChat}
-//               className="bg-indigo-600 text-white p-2 rounded-lg flex items-center hover:bg-indigo-700 transition-colors"
-//             >
-//               <PlusCircle size={18} className="mr-1" />
-//             </button>
-//           </div>
-//         </div>
+//         {/* API Key Section */}
+//         <div className="mb-6">
 
 //         <h2 className="text-lg font-bold text-indigo-800 mb-3">Threads</h2>
 //         <div className="flex-1 overflow-y-auto">
@@ -178,6 +204,34 @@
 //               <h2 className="text-xl font-bold text-gray-800">
 //                 {threads?.find(t => t._id === activeThread)?.title || "Chat"}
 //               </h2>
+//               <div className="flex items-center mt-2 space-x-2">
+//                 <label className="text-sm text-gray-600">Model:</label>
+//                 <select
+//                   value={threads?.find(t => t._id === activeThread)?.modelProvider || 'gemini'}
+//                   onChange={(e) => {
+//                     if (activeThread) {
+//                       updateModelProvider({
+//                         threadId: activeThread,
+//                         provider: e.target.value
+//                       });
+//                     }
+//                   }}
+//                   className="text-sm bg-white border rounded p-1"
+//                 >
+//                   <option value="gemini">Gemini</option>
+//                   <option value="openai">OpenAI</option>
+//                 </select>
+                
+//                 {threads?.find(t => t._id === activeThread)?.modelProvider !== 'gemini' && (
+//                   <button
+//                     onClick={() => setShowApiKeyModal(true)}
+//                     className="ml-2 text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded hover:bg-indigo-200"
+//                   >
+//                     Set API Key
+//                   </button>
+//                 )}
+//               </div>
+              
 //               {parentMessageId && (
 //                 <div className="text-sm text-indigo-600 mt-1 flex items-center">
 //                   <span className="bg-indigo-100 px-2 py-1 rounded">Branched conversation</span>
@@ -189,11 +243,41 @@
 //                   </button>
 //                 </div>
 //               )}
+              
+//               {/* API Key Modal */}
+//               {showApiKeyModal && (
+//                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+//                   <div className="bg-white p-6 rounded-lg w-96">
+//                     <h3 className="font-bold text-lg mb-4">Set API Key</h3>
+//                     <input
+//                       type="password"
+//                       value={apiKeyInput}
+//                       onChange={(e) => setApiKeyInput(e.target.value)}
+//                       placeholder={`Enter ${threads?.find(t => t._id === activeThread)?.modelProvider} API Key`}
+//                       className="w-full border rounded p-2 mb-4"
+//                     />
+//                     <div className="flex justify-end space-x-2">
+//                       <button
+//                         onClick={() => setShowApiKeyModal(false)}
+//                         className="px-4 py-2 border rounded"
+//                       >
+//                         Cancel
+//                       </button>
+//                       <button
+//                         onClick={handleSaveApiKey}
+//                         className="px-4 py-2 bg-indigo-600 text-white rounded"
+//                       >
+//                         Save
+//                       </button>
+//                     </div>
+//                   </div>
+//                 </div>
+//               )}
 //             </div>
 
-//             {/* Messages */}
-//             <div className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-white to-gray-50">
-//               {messages?.length === 0 && (
+//              {/* Messages */}
+//              <div className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-white to-gray-50">
+//                {messages?.length === 0 && (
 //                 <div className="flex items-center justify-center h-full">
 //                   <div className="text-center text-black">
 //                     <FileText className="mx-auto mb-2 text-black" size={40} />

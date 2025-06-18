@@ -6,7 +6,7 @@ export default defineSchema({
   users: defineTable({
     name: v.string(),
     tokenIdentifier: v.string(),
-    starred: v.array(v.id("threads")),
+    starred: v.optional(v.array(v.id("threads"))),
   }).index("by_token", ["tokenIdentifier"]),
   
   userSettings: defineTable({
@@ -21,6 +21,7 @@ export default defineSchema({
     title: v.string(),
     createdAt: v.number(),
     mainThreadId: v.optional(v.id("threads")),
+    modelProvider: v.optional(v.string()), 
   }).index("by_user", ["userId"]),
 
   messages: defineTable({
