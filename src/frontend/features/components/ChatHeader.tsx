@@ -16,7 +16,8 @@ const ChatHeader = memo(function ChatHeader({ onNewChat }: ChatHeaderProps) {
         <div className="ml-auto flex gap-2">
           <Button variant="ghost" size="icon" className="h-8 w-8">
             <Share className="h-4 w-4" />
-          </Button>          <ThemeToggle />
+          </Button>
+          <ThemeToggle />
         </div>
       </div>
 

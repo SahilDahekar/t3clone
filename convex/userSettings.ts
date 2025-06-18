@@ -4,17 +4,26 @@ import { Id } from "./_generated/dataModel";
 
 // Save or update API key for a user
 export const saveApiKey = mutation({
-  args: { 
-    userId: v.id("users"),
+  args: {
+    tokenIdentifier: v.string(),
     apiKey: v.string(),
-    provider: v.string() 
+    provider: v.string()
   },
   handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", args.tokenIdentifier))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
     // Check if key already exists for this user and provider
     const existing = await ctx.db
       .query("userSettings")
-      .filter(q => 
-        q.eq(q.field("userId"), args.userId) &&
+      .filter(q =>
+        q.eq(q.field("userId"), user._id) &&
         q.eq(q.field("provider"), args.provider)
       )
       .first();
@@ -25,32 +34,41 @@ export const saveApiKey = mutation({
     } else {
       // Create new key entry
       await ctx.db.insert("userSettings", {
-        userId: args.userId,
+        userId: user._id,
         apiKey: args.apiKey,
         provider: args.provider,
         createdAt: Date.now(),
       });
     }
-    
+
     return { success: true };
   },
 });
 
 // Retrieve API key for a user
 export const getApiKey = query({
-  args: { 
-    userId: v.id("users"),
-    provider: v.string() 
+  args: {
+    tokenIdentifier: v.string(),
+    provider: v.string()
   },
   handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", args.tokenIdentifier))
+      .first();
+
+    if (!user) {
+      return null;
+    }
+
     const setting = await ctx.db
       .query("userSettings")
-      .filter(q => 
-        q.eq(q.field("userId"), args.userId) &&
+      .filter(q =>
+        q.eq(q.field("userId"), user._id) &&
         q.eq(q.field("provider"), args.provider)
       )
       .first();
-      
+
     return setting?.apiKey || null;
   },
 });

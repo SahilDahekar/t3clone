@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/sidebar"
 import ChatInput from "./components/ChatInput"
 import React, { useEffect, useRef, useState, useCallback, memo } from "react"
+import { SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react"
 import { useParams, useNavigate } from "react-router"
 import ChatHeader from "./components/ChatHeader"
 import MessagesList from "./components/MessagesList"
@@ -17,7 +18,11 @@ import { api } from "../../../convex/_generated/api"
 import { useQuery , useMutation } from "convex/react"
 import { Id } from "../../../convex/_generated/dataModel"
 
-import { Thread, Message } from "./launchChat" // Adjust the import path as necessary
+import { Thread } from "./launchChat" // Adjust the import path as necessary
+import { Button } from "@/components/ui/button"
+import { LogIn } from "lucide-react"
+import { dark } from "@clerk/themes"
+import { useTheme } from "next-themes"
 
 const models = ["Gemini 2.5 Flash", "GPT-4", "Claude 3.5 Sonnet", "Llama 3.1"]
 
@@ -67,8 +72,12 @@ const Chat = () => {
   const navigate = useNavigate()
   const [message, setMessage] = useState("")
   const [selectedModel, setSelectedModel] = useState("Gemini 2.5 Flash")
-  const threads = useQuery(api.threads.getThreads,
-    { userId: "jh725nd27yxr0pvbsyr77gnek57j09et" as Id<"users"> });
+  const { user } = useUser();
+  const { theme } = useTheme();
+  if (!user) {
+    navigate("/auth/sign-in");
+  }
+  const threads = useQuery(api.threads.getThreads, { tokenIdentifier: user?.id ?? "" });
   const messages = useQuery(api.message.getMessages, 
     threadId ? { threadId: threadId as Id<"threads"> } : "skip"
   );
@@ -128,6 +137,7 @@ const Chat = () => {
     }
 
     await send({ 
+      tokenIdentifier: user?.id ?? "",
       threadId: threadId as Id<"threads">,
       role: "user",
       content,
@@ -177,7 +187,7 @@ const Chat = () => {
           </SidebarContent>
 
           <SidebarFooter className="p-4 border-t border-border">
-            <div className="flex items-center gap-3">
+            {/* <div className="flex items-center gap-3">
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-primary text-primary-foreground text-sm">SD</AvatarFallback>
               </Avatar>
@@ -185,7 +195,27 @@ const Chat = () => {
                 <div className="text-sm font-medium">Sahil Dahekar</div>
                 <div className="text-xs text-muted-foreground">Free</div>
               </div>
-            </div>
+            </div> */}
+            <SignedIn>
+                <UserButton showName appearance={{
+                    baseTheme: theme === "dark" ? dark : undefined,
+                    elements: {
+                        avatarBox: {
+                            width: '2rem',
+                            height: '2rem',
+                        },
+                        userButtonOuterIdentifier : {
+                            order: '2',
+                        },
+                        rootBox: "px-3 py-3",
+                    }
+                }}/>
+            </SignedIn>
+            <SignedOut>
+                <SignInButton mode="modal" forceRedirectUrl={`/chat/${threadId}`}>
+                    <Button variant="outline" className='flex items-center justify-start py-6 text-md'><LogIn className="mr-1 ml-2" />Login</Button>
+                </SignInButton>
+            </SignedOut>
           </SidebarFooter>
         </Sidebar>
 

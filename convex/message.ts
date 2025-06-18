@@ -32,6 +32,7 @@ export const getMessagesForAI = internalQuery({
 export const send = mutation({
   args: {
     threadId: v.id("threads"),
+    tokenIdentifier: v.string(),
     role: v.literal("user"),
     content: v.array(
       v.union(
@@ -46,17 +47,27 @@ export const send = mutation({
     ),
     parentMessageId: v.optional(v.id("messages")),  
   },
-  handler: async (ctx, { threadId, role, content}) => {
-    
+  handler: async (ctx, { threadId, tokenIdentifier, role, content}) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", tokenIdentifier))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
     await ctx.db.insert("messages", {
       threadId,
+      userId: user._id,
       role,
-      content, 
+      content,
       createdAt: Date.now(),
     });
 
     const assistantMessageId = await ctx.db.insert("messages", {
       threadId,
+      userId: user._id,
       role: "assistant",
       content: [{ type: "text", text: "..." }],
       createdAt: Date.now(),

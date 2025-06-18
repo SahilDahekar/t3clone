@@ -11,6 +11,9 @@ import ChatInput from "./components/ChatInput"
 import React, { useCallback, useState, useRef, memo } from "react"
 import { useNavigate } from "react-router"
 import { useQuery, useMutation } from "convex/react"
+import { SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react"
+import { useTheme } from "next-themes"
+import { dark } from "@clerk/themes"
 import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
 
@@ -19,6 +22,8 @@ import QuickActions from "./components/QuickActions"
 import SampleQuestions from "./components/SampleQuestions"
 import ChatHeader from "./components/ChatHeader"
 import ThreadList from "./components/ThreadList"
+import { Button } from "@/components/ui/button"
+import { LogIn } from "lucide-react"
 
 
 export interface Thread {
@@ -92,23 +97,29 @@ const LaunchChat = () => {
   const [file, setFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
-  const hardcodedUserId = "jh725nd27yxr0pvbsyr77gnek57j09et" as Id<"users">
-  const threads = useQuery(api.threads.getThreads,{userId:hardcodedUserId})
+  const { user } = useUser()
+  const { theme } = useTheme()
+  // if(!user){
+  //   navigate("/auth/sign-in");
+  // }
+  // const hardcodedUserId = "jh725nd27yxr0pvbsyr77gnek57j09et" as Id<"users">
+  const threads = useQuery(api.threads.getThreads, { tokenIdentifier: user?.id ?? "" });
   const createThread = useMutation(api.threads.create)
-    .withOptimisticUpdate((localStore, args) => {
-      const currentThreads = localStore.getQuery(api.threads.getThreads, {userId:hardcodedUserId});
-      if (currentThreads) {
-        const newThread = {
-          _id: `temp-${Date.now()}` as Id<"threads">,
-          _creationTime: Date.now(),
-          userId: args.userId,
-          title: args.title,
-          createdAt: Date.now(),
-          mainThreadId: undefined,
-        };
-        localStore.setQuery(api.threads.getThreads, {userId:hardcodedUserId}, [...currentThreads, newThread]);
-      }
-    });
+  .withOptimisticUpdate((localStore, args) => {
+    const currentThreads = localStore.getQuery(api.threads.getThreads, { tokenIdentifier: user?.id ?? "" });
+    if (currentThreads) {
+      const newThread = {
+        _id: `temp-${Date.now()}` as Id<"threads">,
+        _creationTime: Date.now(),
+        title: args.title,
+        // FIX: Cast user.id to Id<"users">
+        userId: user?.id as Id<"users">, 
+        createdAt: Date.now(),
+        mainThreadId: undefined,
+      };
+      localStore.setQuery(api.threads.getThreads, { tokenIdentifier: user?.id ?? "" }, [...currentThreads, newThread]);
+    }
+  });
   const send = useMutation(api.message.send)
     .withOptimisticUpdate((localStore, args) => {
       const currentMessages = localStore.getQuery(api.message.getMessages, { threadId: args.threadId });
@@ -116,6 +127,7 @@ const LaunchChat = () => {
         _id: `temp-msg-${Date.now()}` as Id<"messages">,
         _creationTime: Date.now(),
         threadId: args.threadId,
+        userId: user?.id as Id<"users">,
         role: args.role,
         content: args.content,
         createdAt: Date.now(),
@@ -135,7 +147,7 @@ const LaunchChat = () => {
       
       // Create thread with optimistic update
       const threadId = await createThread({
-        userId: hardcodedUserId,
+        tokenIdentifier: user?.id ?? "",
         title: message.substring(0, 50)
       }).catch((error) => {
         // The optimistic update will automatically roll back on error
@@ -158,7 +170,7 @@ const LaunchChat = () => {
         const url = await generateUploadUrl();
         const response = await fetch(url);
         const blob = await response.blob();
-        const base64 = await new Promise((resolve) => {
+        const base64 = await new Promise<string | ArrayBuffer | null>((resolve) => {
           const reader = new FileReader();
           reader.onloadend = () => resolve(reader.result);
           reader.readAsDataURL(blob);
@@ -171,9 +183,10 @@ const LaunchChat = () => {
           fileName: file.name
         });
       }
-
+      
       // Send the initial message
-      await send({ 
+      await send({
+        tokenIdentifier: user?.id ?? "",
         threadId,
         role: "user",
         content,
@@ -184,7 +197,7 @@ const LaunchChat = () => {
     } catch (error) {
       console.error("Error creating thread:", error);
     }
-  }, [message, createThread, send, navigate, file, generateUploadUrl, hardcodedUserId]);
+  }, [message, createThread, send, navigate, file, generateUploadUrl, user?.id ?? ""]);
 
   const handleQuestionSelect = useCallback((question: string) => {
     setMessage(question)
@@ -214,7 +227,7 @@ const LaunchChat = () => {
           </SidebarContent>
 
           <SidebarFooter className="p-4 border-t border-border">
-            <div className="flex items-center gap-3">
+            {/* <div className="flex items-center gap-3">
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-primary text-primary-foreground text-sm">SD</AvatarFallback>
               </Avatar>
@@ -222,7 +235,27 @@ const LaunchChat = () => {
                 <div className="text-sm font-medium">Sahil Dahekar</div>
                 <div className="text-xs text-muted-foreground">Free</div>
               </div>
-            </div>
+            </div> */}
+            <SignedIn>
+                <UserButton showName appearance={{
+                    baseTheme: theme === "dark" ? dark : undefined,
+                    elements: {
+                        avatarBox: {
+                            width: '2rem',
+                            height: '2rem',
+                        },
+                        userButtonOuterIdentifier : {
+                            order: '2',
+                        },
+                        rootBox: "px-3 py-3",
+                    }
+                }}/>
+            </SignedIn>
+            <SignedOut>
+                <SignInButton mode="modal" forceRedirectUrl={"/chat"}>
+                    <Button variant="outline" className='flex items-center justify-start py-6 text-md'><LogIn className="mr-1 ml-2" />Login</Button>
+                </SignInButton>
+            </SignedOut>
           </SidebarFooter>
         </Sidebar>
 
