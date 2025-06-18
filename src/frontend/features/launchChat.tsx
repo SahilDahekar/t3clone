@@ -8,7 +8,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import ChatInput from "./components/ChatInput"
-import React, { useCallback, useState, useRef, memo } from "react"
+import React, { useCallback, useState, useRef, memo, useEffect } from "react" // Added useEffect
 import { useNavigate } from "react-router"
 import { useQuery, useMutation } from "convex/react"
 import { SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react"
@@ -50,46 +50,7 @@ const sampleQuestions = [
 
 const models = ["Gemini 2.5 Flash", "GPT-4", "Claude 3.5 Sonnet", "Llama 3.1"]
 
-const initialThreads: Thread[] = [
-  {
-    id: "d96a40f1-1f5a-4abd-9f05-d9c24bcc04a0",
-    title: "What is T3 Stack?",
-    date: "Today",
-    messages: [
-      {
-        id: "61734ff1-ccb0-46ab-b5af-5cfff35230a1",
-        sender: "user",
-        content: "Can you explain what T3 Stack is?",
-        timestamp: "10:30 AM",
-      },
-      {
-        id: "274dd225-1608-457a-8c2c-0d7809176089",
-        sender: "assistant",
-        content: "T3 Stack is a modern web development stack that combines TypeScript, tRPC, and Tailwind CSS. It's designed for building typesafe full-stack applications with excellent developer experience.",
-        timestamp: "10:31 AM",
-      },
-    ],
-  },
-  {
-    id: "f5d2d446-312d-46c3-a6e7-b4fe67ef7667",
-    title: "T3 Stack Components",
-    date: "Today",
-    messages: [
-      {
-        id: "7500999b-c6c4-463d-b4dc-0c61a1973ace",
-        sender: "user",
-        content: "What are the main components of T3 Stack?",
-        timestamp: "11:15 AM",
-      },
-      {
-        id: "f28ce559-ff28-47c4-8cfd-b4c950c526a6",
-        sender: "assistant",
-        content: "The main components are:\n- TypeScript for type safety\n- tRPC for end-to-end typesafe APIs\n- Tailwind CSS for styling\n- Next.js for the framework\n- Prisma for database management\n- NextAuth.js for authentication",
-        timestamp: "11:16 AM",
-      },
-    ],
-  }
-]
+// Removed initialThreads as it's no longer used, data comes from Convex
 
 const LaunchChat = () => {
   const [message, setMessage] = useState("")
@@ -99,59 +60,81 @@ const LaunchChat = () => {
   const navigate = useNavigate()
   const { user } = useUser()
   const { theme } = useTheme()
-  // if(!user){
-  //   navigate("/auth/sign-in");
-  // }
-  // const hardcodedUserId = "jh725nd27yxr0pvbsyr77gnek57j09et" as Id<"users">
+
+  // Redirect if user is not logged in
+  // It's generally better to handle this with Clerk's middleware or a layout component
+  // For basic cases, this client-side check can work but might cause flickering.
+  
+
+
   const threads = useQuery(api.threads.getThreads, { tokenIdentifier: user?.id ?? "" });
+  
+  // NEW: Store user mutation - ensure it's imported in your api/index.ts
+  const storeUser = useMutation(api.user.store);
+
   const createThread = useMutation(api.threads.create)
   .withOptimisticUpdate((localStore, args) => {
     const currentThreads = localStore.getQuery(api.threads.getThreads, { tokenIdentifier: user?.id ?? "" });
     if (currentThreads) {
       const newThread = {
         _id: `temp-${Date.now()}` as Id<"threads">,
+        userId: user?.id as Id<"users">, // Use Clerk's user ID
         _creationTime: Date.now(),
         title: args.title,
-        // FIX: Cast user.id to Id<"users">
-        userId: user?.id as Id<"users">, 
+        tokenIdentifier: args.tokenIdentifier, // Use tokenIdentifier from args, matching schema
         createdAt: Date.now(),
-        mainThreadId: undefined,
+        // mainThreadId: undefined is usually handled by the mutation itself if optional
       };
       localStore.setQuery(api.threads.getThreads, { tokenIdentifier: user?.id ?? "" }, [...currentThreads, newThread]);
     }
   });
+
   const send = useMutation(api.message.send)
     .withOptimisticUpdate((localStore, args) => {
+      // Note: This optimistic update assumes the messages are only displayed in the chat/:threadId view.
+      // If messages for a new thread need to appear here before navigation, more complex state is needed.
+      // Given the navigation, this specific optimistic update might not be seen directly in this component.
+      // However, it's correctly structured for `messages` query in the other Chat component.
       const currentMessages = localStore.getQuery(api.message.getMessages, { threadId: args.threadId });
       const newMessage = {
         _id: `temp-msg-${Date.now()}` as Id<"messages">,
         _creationTime: Date.now(),
         threadId: args.threadId,
-        userId: user?.id as Id<"users">,
+        userId: user?.id as Id<"users">, // Use Clerk's user ID
+        // REMOVED: userId as it's not in your `messages` schema for direct storage
         role: args.role,
         content: args.content,
         createdAt: Date.now(),
+        // parentMessageId: undefined is usually handled by the mutation itself if optional
       };
       localStore.setQuery(api.message.getMessages, { threadId: args.threadId }, 
         [...(currentMessages || []), newMessage]
       );
     });
   const generateUploadUrl = useMutation(api.message.generateUploadUrl)
-  
+
+  // Effect to store user in Convex when user object is available from Clerk
+  useEffect(() => {
+    if (user && user.id && user.fullName) {
+      storeUser({
+        tokenIdentifier: user.id,
+        name: user.fullName,
+      });
+    }
+  }, [user, storeUser]);
+
+
   const handleSendMessage = useCallback(async () => {
-    if (!message.trim()) return
+    if (!message.trim() || !user?.id) { // Ensure user is logged in before sending
+        console.warn("Message is empty or user is not logged in.");
+        return;
+    }
     
     try {
-      // Create temporary thread ID for optimistic updates
-      const tempThreadId = `temp-${Date.now()}` as Id<"threads">;
-      
-      // Create thread with optimistic update
+      // Create thread. The optimistic update is handled by the `withOptimisticUpdate` above.
       const threadId = await createThread({
-        tokenIdentifier: user?.id ?? "",
-        title: message.substring(0, 50)
-      }).catch((error) => {
-        // The optimistic update will automatically roll back on error
-        throw error;
+        tokenIdentifier: user.id, // Pass Clerk's user ID
+        title: message.substring(0, 50) // Use first 50 chars as title
       });
 
       // Prepare message content
@@ -168,8 +151,9 @@ const LaunchChat = () => {
       // Handle file upload if present
       if (file) {
         const url = await generateUploadUrl();
-        const response = await fetch(url);
-        const blob = await response.blob();
+        const uploadResponse = await fetch(url);
+        const blob = await uploadResponse.blob();
+        
         const base64 = await new Promise<string | ArrayBuffer | null>((resolve) => {
           const reader = new FileReader();
           reader.onloadend = () => resolve(reader.result);
@@ -186,26 +170,41 @@ const LaunchChat = () => {
       
       // Send the initial message
       await send({
-        tokenIdentifier: user?.id ?? "",
+        tokenIdentifier: user.id, // Pass Clerk's user ID
         threadId,
         role: "user",
         content,
         parentMessageId: undefined
       });
 
+      // Clear message input and file after successful send
+      setMessage("");
+      setFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+
+      // Navigate to the new chat thread
       navigate(`/chat/${threadId}`);
     } catch (error) {
-      console.error("Error creating thread:", error);
+      console.error("Error creating thread or sending message:", error);
+      // TODO: Add user-friendly error feedback here
     }
-  }, [message, createThread, send, navigate, file, generateUploadUrl, user?.id ?? ""]);
+  }, [message, createThread, send, navigate, file, generateUploadUrl, user?.id]); // Added user?.id to dependencies
 
   const handleQuestionSelect = useCallback((question: string) => {
     setMessage(question)
-  }, [])
+    // Automatically send the message when a sample question is selected
+    // Note: This will trigger handleSendMessage which creates a new thread.
+    // If you want to only populate the input, remove the call to handleSendMessage here.
+    handleSendMessage(); 
+  }, [handleSendMessage]) // Dependency on handleSendMessage
 
   const handleSelectThread = useCallback((threadId: string) => {
     navigate(`/chat/${threadId}`)
   }, [navigate])
+
+  // Removed messagesEndRef and its useEffect as this component doesn't display messages list
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -219,23 +218,14 @@ const LaunchChat = () => {
                 id: t._id,
                 title: t.title,
                 date: new Date(t.createdAt).toLocaleDateString(),
-                messages: []
+                messages: [] // Messages are not loaded here, only thread metadata
               }))}
-              selectedThread={null}
+              selectedThread={null} // No thread selected on this page
               setSelectedThread={handleSelectThread}
             />
           </SidebarContent>
 
           <SidebarFooter className="p-4 border-t border-border">
-            {/* <div className="flex items-center gap-3">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-primary text-primary-foreground text-sm">SD</AvatarFallback>
-              </Avatar>
-              <div className="flex-1">
-                <div className="text-sm font-medium">Sahil Dahekar</div>
-                <div className="text-xs text-muted-foreground">Free</div>
-              </div>
-            </div> */}
             <SignedIn>
                 <UserButton showName appearance={{
                     baseTheme: theme === "dark" ? dark : undefined,
@@ -267,7 +257,13 @@ const LaunchChat = () => {
           <main className="flex-1 flex flex-col overflow-hidden">
             <div className="flex-1 overflow-y-auto p-8">
               <div className="flex flex-col items-center justify-center min-h-full">
-                <h1 className="text-3xl font-semibold mb-8 text-center">How can I help you, Sahil?</h1>
+                {/* Conditionally render welcome message or loading */}
+                {user ? (
+                  <h1 className="text-3xl font-semibold mb-8 text-center">How can I help you, {user.firstName || user.fullName || "there"}?</h1>
+                ) : (
+                  <h1 className="text-3xl font-semibold mb-8 text-center">Please log in to start a chat.</h1>
+                )}
+                
                 <QuickActions />
                 <SampleQuestions
                   questions={sampleQuestions}

@@ -80,3 +80,27 @@ export const branch = mutation({
     return threadId;
   },
 });
+
+export const createUser = mutation({
+  args: {
+    name: v.string(),
+    tokenIdentifier: v.string(),
+  },
+  handler: async (ctx, { name, tokenIdentifier }) => {
+    const existingUser = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", tokenIdentifier))
+      .first();
+
+    if (existingUser) {
+      return existingUser._id;
+    }
+
+    const userId = await ctx.db.insert("users", {
+      name,
+      tokenIdentifier,
+      starred: [],
+    });
+    return userId;
+  }
+});

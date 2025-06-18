@@ -18,6 +18,7 @@ import type * as functions from "../functions.js";
 import type * as message from "../message.js";
 import type * as registry from "../registry.js";
 import type * as threads from "../threads.js";
+import type * as user from "../user.js";
 import type * as userSettings from "../userSettings.js";
 
 /**
@@ -34,6 +35,7 @@ declare const fullApi: ApiFromModules<{
   message: typeof message;
   registry: typeof registry;
   threads: typeof threads;
+  user: typeof user;
   userSettings: typeof userSettings;
 }>;
 export declare const api: FilterApi<
