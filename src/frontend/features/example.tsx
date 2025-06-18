@@ -27,7 +27,15 @@ export default function Example() {
 
   const createThread = useMutation(api.threads.create);
   const send = useMutation(api.message.send);
-  const defaultChatName = "New Chat";
+// <<<<<<< HEAD
+//   const defaultChatName = "New Chat";
+// =======
+
+//   // Auto-scroll to bottom when messages change
+//   useEffect(() => {
+//     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+//   }, [messages]);
+// >>>>>>> 4c3355b3e163f7fba4eda1f0c5cd0d820b5e85ba
 
   async function handleNewChat() {
     if (!projectId) {

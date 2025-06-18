@@ -40,7 +40,6 @@ export const saveApiKey = mutation({
         createdAt: Date.now(),
       });
     }
-
     return { success: true };
   },
 });

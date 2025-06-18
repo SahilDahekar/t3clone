@@ -78,5 +78,20 @@ export const branch = mutation({
       mainThreadId,
     });
     return threadId;
+    // This is a new thread that branches from the main thread so insert old messages to this thread
+    // const messages = await ctx.db
+    //   .query("messages")
+    //   .withIndex("by_thread", (q) => q.eq("threadId", mainThreadId))
+    //   .collect();
+    
+    // // now insert messages into the new thread
+    // for (const message of messages) {
+    //   await ctx.db.insert("messages", {
+    //     threadId,
+    //     role: message.role,
+    //     content: message.content,
+    //     createdAt: Date.now()
+    //   });
+    // }
   },
 });
