@@ -12,11 +12,13 @@ export default function Example() {
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+  const [apiKeyInput, setApiKeyInput] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const hardcodedUserId = "j572pt27hbqy8rkdgjydk9tjj97j1y0e" as Id<"users">; 
-  const threads = useQuery(api.threads.getThreads, {userId: hardcodedUserId});
+  const threads = useQuery(api.threads.getThreads, {tokenIdentifier: hardcodedUserId});
   
   const fileUploadUrl = useMutation(api.files.generateUploadUrl);
   const getUrl = useMutation(api.files.getUrl);
@@ -27,23 +29,32 @@ export default function Example() {
 
   const createThread = useMutation(api.threads.create);
   const send = useMutation(api.message.send);
-// <<<<<<< HEAD
-//   const defaultChatName = "New Chat";
-// =======
+  const updateModelProvider = useMutation(api.threads.updateModelProvider);
+  const saveApiKey = useMutation(api.userSettings.saveApiKey);
+  const defaultChatName = "New Chat";
 
-//   // Auto-scroll to bottom when messages change
-//   useEffect(() => {
-//     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-//   }, [messages]);
-// >>>>>>> 4c3355b3e163f7fba4eda1f0c5cd0d820b5e85ba
+  const handleSaveApiKey = async () => {
+    if (activeThread && apiKeyInput) {
+      const thread = threads?.find(t => t._id === activeThread);
+      if (thread) {
+        await saveApiKey({
+          tokenIdentifier: thread.userId,
+          apiKey: apiKeyInput,
+          provider: thread.modelProvider || 'gemini'
+        });
+        setShowApiKeyModal(false);
+        setApiKeyInput("");
+      }
+    }
+  };
 
   async function handleNewChat() {
     if (!projectId) {
       alert("Please enter a project ID first");
       return;
     }
-    const thread = await createThread({ title: projectId, userId: hardcodedUserId });
-    setActiveThread(thread);
+    // const thread = await createThread({ title: projectId, userId: hardcodedUserId });
+    setActiveThread(threads);
     setParentMessageId(undefined);
     setProjectId("");
   }
@@ -81,7 +92,7 @@ export default function Example() {
     }
 
     try {
-      await send({ threadId: activeThread, role: "user", content, parentMessageId });
+      await send({ threadId: activeThread, role: "user", content, parentMessageId , tokenIdentifier });
       postSendCleanup();
     } catch (error) {
       console.error("Failed to send message:", error);
@@ -186,6 +197,34 @@ export default function Example() {
               <h2 className="text-xl font-bold text-gray-800">
                 {threads?.find(t => t._id === activeThread)?.title || "Chat"}
               </h2>
+              <div className="flex items-center mt-2 space-x-2">
+                <label className="text-sm text-gray-600">Model:</label>
+                <select
+                  value={threads?.find(t => t._id === activeThread)?.modelProvider || 'gemini'}
+                  onChange={(e) => {
+                    if (activeThread) {
+                      updateModelProvider({
+                        threadId: activeThread,
+                        provider: e.target.value
+                      });
+                    }
+                  }}
+                  className="text-sm bg-white border rounded p-1"
+                >
+                  <option value="gemini">Gemini</option>
+                  <option value="openai">OpenAI</option>
+                </select>
+                
+                {threads?.find(t => t._id === activeThread)?.modelProvider !== 'gemini' && (
+                  <button
+                    onClick={() => setShowApiKeyModal(true)}
+                    className="ml-2 text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded hover:bg-indigo-200"
+                  >
+                    Set API Key
+                  </button>
+                )}
+              </div>
+              
               {parentMessageId && (
                 <div className="text-sm text-indigo-600 mt-1 flex items-center">
                   <span className="bg-indigo-100 px-2 py-1 rounded">Branched conversation</span>
@@ -197,11 +236,41 @@ export default function Example() {
                   </button>
                 </div>
               )}
+              
+              {/* API Key Modal */}
+              {showApiKeyModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                  <div className="bg-white p-6 rounded-lg w-96">
+                    <h3 className="font-bold text-lg mb-4">Set API Key</h3>
+                    <input
+                      type="password"
+                      value={apiKeyInput}
+                      onChange={(e) => setApiKeyInput(e.target.value)}
+                      placeholder={`Enter ${threads?.find(t => t._id === activeThread)?.modelProvider} API Key`}
+                      className="w-full border rounded p-2 mb-4"
+                    />
+                    <div className="flex justify-end space-x-2">
+                      <button
+                        onClick={() => setShowApiKeyModal(false)}
+                        className="px-4 py-2 border rounded"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleSaveApiKey}
+                        className="px-4 py-2 bg-indigo-600 text-white rounded"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-white to-gray-50">
-              {messages?.length === 0 && (
+             {/* Messages */}
+             <div className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-white to-gray-50">
+               {messages?.length === 0 && (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center text-black">
                     <FileText className="mx-auto mb-2 text-black" size={40} />

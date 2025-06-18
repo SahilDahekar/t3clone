@@ -20,6 +20,13 @@ export const getThreads = query({
   },
 });
 
+export const get = internalQuery({
+  args: { threadId: v.id("threads") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.threadId);
+  },
+});
+
 export const list = internalQuery({
   args: {threadId: v.id("threads")},
   handler: async (ctx,args) => {
@@ -95,3 +102,17 @@ export const branch = mutation({
     // }
   },
 });
+
+
+
+
+export const updateModelProvider = mutation({
+  args: {
+    threadId: v.id("threads"),
+    provider: v.string(),
+  },
+  handler: async (ctx, { threadId, provider }) => {
+    await ctx.db.patch(threadId, { modelProvider: provider });
+  },
+});
+

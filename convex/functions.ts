@@ -1,4 +1,5 @@
 import { google } from "@ai-sdk/google";
+import { createOpenAI } from "@ai-sdk/openai";
 import {
   streamText,
   type FilePart,
@@ -16,7 +17,33 @@ export const chat = internalAction({
   },
   handler: async (ctx, { threadId, messageId }) => {
     try {
-      const model = google("gemini-2.0-flash");
+      // Get thread to determine model provider
+      const thread = await ctx.runQuery(internal.threads.get, { threadId });
+      if (!thread) throw new Error("Thread not found");
+      
+      const modelProvider = thread.modelProvider || 'gemini';
+      let model;
+      let apiKey: string | undefined = undefined;
+
+      // Get API key if needed
+      if (modelProvider !== 'gemini') {
+        const apiKeyResult = await ctx.runQuery(internal.userSettings.getApiKey, {
+          tokenIdentifier: thread.userId,
+          provider: modelProvider
+        });
+        apiKey = apiKeyResult || undefined;
+        if (!apiKey) throw new Error(`No API key found for ${modelProvider}`);
+      }
+
+      // Initialize model with API key
+      switch (modelProvider) {
+        case 'openai':
+          model = createOpenAI({ apiKey })("gpt-4-turbo");
+          break;
+        case 'gemini':
+        default:
+          model = google("gemini-2.0-flash");
+      }
 
       const allMessages = await ctx.runQuery(
         internal.message.getMessagesForAI,
@@ -43,11 +70,11 @@ export const chat = internalAction({
         for (const part of latest.content) {
           if (part.type === "text") userText += part.text;
           if (part.type === "file") {
-            const fileResponse = await fetch(part.data); // `part.data` is URL
+            const fileResponse = await fetch(part.data); 
             const arrayBuffer = await fileResponse.arrayBuffer();
             filePart = {
               type: "file",
-              data: new Uint8Array(arrayBuffer), // ✅ correct binary buffer
+              data: new Uint8Array(arrayBuffer), 
               mimeType: part.mimeType,
             };
           }
@@ -96,9 +123,11 @@ export const chat = internalAction({
       console.error("AI Chat Error:", err);
       await ctx.runMutation(internal.message.updateMessage, {
         messageId,
-        content: [{ type: "text", text: "An error occurred." }],
+        content: [{ type: "text", text: String(err)}],
       });
       throw err;
     }
   },
 });
+
+          

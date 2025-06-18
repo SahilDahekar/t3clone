@@ -74,39 +74,60 @@ const Chat = () => {
   const [selectedModel, setSelectedModel] = useState("Gemini 2.5 Flash")
   const { user } = useUser();
   const { theme } = useTheme();
-  if (!user) {
+
+  // Redirect if user is not logged in (consider placing this outside Chat component or using Clerk's protection methods)
+  // This redirect logic should probably be in a layout or a dedicated auth check.
+  // For now, moving it slightly to avoid breaking hooks if `user` is null initially.
+  if (!user && typeof window !== 'undefined') { // Only redirect on client side
     navigate("/auth/sign-in");
   }
+
   const threads = useQuery(api.threads.getThreads, { tokenIdentifier: user?.id ?? "" });
   const messages = useQuery(api.message.getMessages, 
     threadId ? { threadId: threadId as Id<"threads"> } : "skip"
   );
   const send = useMutation(api.message.send);
   const generateUploadUrl = useMutation(api.message.generateUploadUrl);
+  // NEW: Add the storeUser mutation
+  const storeUser = useMutation(api.user.store);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
   // Get thread title from query results
   const threadTitle = threads?.find(t => t._id === threadId)?.title ?? "New Chat";
 
-  // Removed legacy streaming handler - Convex handles updates automatically
+  // NEW: Effect to store user in Convex
+  useEffect(() => {
+    if (user && user.id && user.fullName) {
+      // Call the Convex mutation to store or update user data
+      storeUser({
+        tokenIdentifier: user.id,
+        name: user.fullName, // Clerk's `fullName` property usually provides the display name
+      });
+    }
+  }, [user, storeUser]); // Dependency array: run when `user` or `storeUser` changes
 
   const handleSendMessage = useCallback(async () => {
     if (!message.trim() || !threadId) return
     setMessage("")
 
+    // The fetch to /api/chat is for your backend AI integration, not directly Convex
+    // The Convex `send` mutation call is below.
     try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messages: message,
-          selectedModel,
-        })
-      })
-      console.log("Sending message:", message)
+      // You might still want to send the message to your /api/chat if it interacts with external LLMs
+      // const response = await fetch("/api/chat", {
+      //   method: "POST",
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //   },
+      //   body: JSON.stringify({
+      //     messages: message,
+      //     selectedModel,
+      //   })
+      // })
+      // console.log("Sending message to external AI:", message)
           
     const content: Array<{ 
       type: "text", 
@@ -134,6 +155,10 @@ const Chat = () => {
         mimeType: file.type,
         fileName: file.name
       });
+      setFile(null); // Clear the file input after sending
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''; // Reset the file input field
+      }
     }
 
     await send({ 
@@ -144,12 +169,13 @@ const Chat = () => {
       parentMessageId: undefined
     });
 
-      // Convex handles the response automatically
-      if (!response.body) throw new Error('No response body')
+      // Convex handles the response automatically for the 'send' mutation.
+      // If you're still using the /api/chat, you'd handle its response here:
+      // if (!response.body) throw new Error('No response body')
     } catch (error) {
-      console.error('Streaming error:', error)
+      console.error('Error sending message or uploading file:', error)
     }
-  }, [message, threadId, generateUploadUrl, send, file])
+  }, [message, threadId, generateUploadUrl, send, file, user?.id, setFile, fileInputRef]) // Add fileInputRef to dependencies
 
   const handleNewChat = useCallback(() => {
     navigate('/chat')
@@ -161,11 +187,9 @@ const Chat = () => {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [threads, threadId])
+  }, [messages, threadId]) // Changed `threads` to `messages` as scroll depends on message list update
 
-  if (!threadId || !messages) {
-    return <div>Loading...</div>;
-  }
+
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -179,7 +203,7 @@ const Chat = () => {
                 id: t._id,
                 title: t.title,
                 date: new Date(t.createdAt).toLocaleDateString(),
-                messages: []
+                messages: [] // Messages are loaded separately per thread
               }))}
               selectedThread={threadId ?? null}
               setSelectedThread={handleSelectThread}
@@ -187,15 +211,6 @@ const Chat = () => {
           </SidebarContent>
 
           <SidebarFooter className="p-4 border-t border-border">
-            {/* <div className="flex items-center gap-3">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-primary text-primary-foreground text-sm">SD</AvatarFallback>
-              </Avatar>
-              <div className="flex-1">
-                <div className="text-sm font-medium">Sahil Dahekar</div>
-                <div className="text-xs text-muted-foreground">Free</div>
-              </div>
-            </div> */}
             <SignedIn>
                 <UserButton showName appearance={{
                     baseTheme: theme === "dark" ? dark : undefined,

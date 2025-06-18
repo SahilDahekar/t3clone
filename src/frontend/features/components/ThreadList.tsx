@@ -24,7 +24,7 @@ const ThreadList = memo(function ThreadList({
   return (
     <SidebarGroup>
       <SidebarGroupLabel className="text-muted-foreground text-sm font-medium mb-2">
-        Today
+        Your Threads
       </SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
